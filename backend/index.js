@@ -1026,9 +1026,6 @@ app.post("/api/send-reminder", async (req, res) => {
   }
 });
 
-// working tree
-const moment = require('moment-timezone'); // Ensure moment-timezone is installed
-
 // Function to check and update RFQ status based on the closing date and time
 const updateRFQStatusBasedOnClosingDate = async () => {
   try {
