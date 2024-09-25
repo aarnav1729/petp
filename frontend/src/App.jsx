@@ -53,7 +53,7 @@ const App = () => {
                     <Route path="/vendor-list" element={<VendorList />} />
                     <Route path="/active-auctions" element={<ActiveAuctions />} />
                     <Route path="/auction-room/:rfqId" element={<AuctionRoom username={username} role={role} />} />
-                    <Route path="/rfq/:rfqId" element={<RFQDetailsPage />} />
+                    <Route path="/rfq/:rfqId" element={<RFQDetailsPage userRole={role} />} />
                   </>
                 )}
 
@@ -70,6 +70,8 @@ const App = () => {
                 {role === "factory" && (
                   <>
                     <Route path="/new-rfq" element={<NewRFQForm />} />
+                    <Route path="/rfq-list" element={<RFQList />} />
+                    <Route path="/rfq/:rfqId" element={<RFQDetailsPage userRole={role} />} />
                     <Route path="/closed-rfqs" element={<ClosedRFQs />} />
                   </>
                 )}

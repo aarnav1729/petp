@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 
-const RFQDetailsPage = () => {
+const RFQDetailsPage = ({ userRole }) => {
   const { rfqId } = useParams();
   const navigate = useNavigate();
   const [rfqDetails, setRfqDetails] = useState(null);
@@ -161,9 +161,16 @@ const RFQDetailsPage = () => {
                     <tr key={quote._id} className="hover:bg-blue-200">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{quote.vendorName}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{quote.numberOfTrucks}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{quote.price}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{quote.label}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{quote.trucksAllotted}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {userRole === "factory" ? <span className="blur-sm">Blurred</span> : quote.price}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {userRole === "factory" ? <span className="blur-sm">Blurred</span> : quote.label}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {userRole === "factory" ? <span className="blur-sm">Blurred</span> : quote.trucksAllotted}
+                      </td>
+
                     </tr>
                   ))}
                 </tbody>

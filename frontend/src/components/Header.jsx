@@ -16,6 +16,7 @@ const Header = ({ role, onLogout }) => {
     { to: "/pending-rfqs", label: "Pending RFQs" }
   ] : role === "factory" ? [
     { to: "/new-rfq", label: "New RFQ" },
+    { to: "/rfq-list", label: "RFQ List" },
     { to: "/closed-rfqs", label: "Closed RFQs" }
   ] : [
     { to: "/terms", label: "Terms & Conditions" },
