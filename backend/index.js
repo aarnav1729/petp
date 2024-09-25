@@ -1026,24 +1026,36 @@ app.post("/api/send-reminder", async (req, res) => {
   }
 });
 
-// function to check and update rfq status based on the closing date
+// working tree
+const moment = require('moment-timezone'); // Ensure moment-timezone is installed
+
+// Function to check and update RFQ status based on the closing date and time
 const updateRFQStatusBasedOnClosingDate = async () => {
   try {
-    const now = new Date();
-    // find all rfqs with status 'pending' and closing date less than or equal to current date
+    const now = moment().tz('Asia/Kolkata'); // Adjust to your preferred time zone
+    console.log("Current time (IST):", now.format());
+
+    // Find all RFQs with status 'pending'
     const rfqs = await RFQ.find({
       status: "pending",
-      RFQClosingDate: { $lte: now },
     });
 
     for (const rfq of rfqs) {
-      rfq.status = "closed";
-      await rfq.save();
-    }
+      // Combine RFQClosingDate and RFQClosingTime to create a full closing datetime
+      const closingDateTime = moment.tz(
+        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${rfq.RFQClosingTime}:00`,
+        'Asia/Kolkata' // Ensure this matches your time zone
+      );
 
-    console.log(
-      `${rfqs.length} RFQs updated to 'closed' status based on closing date.`
-    );
+      console.log(`RFQ ${rfq.RFQNumber} Closing DateTime (IST):`, closingDateTime.format());
+
+      // If the current time is past the closing date and time, update the status
+      if (now.isAfter(closingDateTime)) {
+        rfq.status = "closed";
+        await rfq.save();
+        console.log(`RFQ ${rfq.RFQNumber} has been updated to 'closed'.`);
+      }
+    }
   } catch (error) {
     console.error("Error updating RFQ status based on closing date:", error);
   }
