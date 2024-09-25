@@ -239,7 +239,7 @@ const rfqSchema = new mongoose.Schema({
   eReverseTime: { type: String, required: false },
   vehiclePlacementBeginDate: Date,
   vehiclePlacementEndDate: Date,
-  status: { type: String, default: "pending" },
+  status: { type: String, enum: ["open", "closed"], default: "open" },
   RFQClosingDate: Date,
   RFQClosingTime: { type: String, required: true },
   eReverseToggle: { type: Boolean, default: false },
@@ -1029,24 +1029,12 @@ app.post("/api/send-reminder", async (req, res) => {
 // Function to check and update RFQ status based on the closing date and time
 const updateRFQStatusBasedOnClosingDate = async () => {
   try {
-    const now = moment().tz('Asia/Kolkata'); // Adjust to your preferred time zone
-    console.log("Current time (IST):", now.format());
-
-    // Find all RFQs with status 'pending'
-    const rfqs = await RFQ.find({
-      status: "pending",
-    });
+    const now = moment().tz('Asia/Kolkata'); // Current time
+    const rfqs = await RFQ.find({ status: "open" });  // Only check "open" RFQs
 
     for (const rfq of rfqs) {
-      // Combine RFQClosingDate and RFQClosingTime to create a full closing datetime
-      const closingDateTime = moment.tz(
-        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${rfq.RFQClosingTime}:00`,
-        'Asia/Kolkata' // Ensure this matches your time zone
-      );
+      const closingDateTime = moment.tz(`${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${rfq.RFQClosingTime}:00`, 'Asia/Kolkata');
 
-      console.log(`RFQ ${rfq.RFQNumber} Closing DateTime (IST):`, closingDateTime.format());
-
-      // If the current time is past the closing date and time, update the status
       if (now.isAfter(closingDateTime)) {
         rfq.status = "closed";
         await rfq.save();

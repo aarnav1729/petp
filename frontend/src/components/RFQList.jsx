@@ -73,8 +73,7 @@ const RFQList = () => {
           className="text-black p-3 border bg-gray-200 border-blue-900 rounded w-full md:w-1/4"
         >
           <option value="">All Statuses</option>
-          <option value="pending">pending</option>
-          <option value="ongoing">ongoing</option>
+          <option value="open">open</option>
           <option value="closed">closed</option>
         </select>
       </div>
@@ -116,10 +115,10 @@ const RFQList = () => {
                     onChange={(e) => updateStatus(rfq._id, e.target.value)}
                     className="mt-1 block w-full px-1 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   >
-                    <option value="pending">pending</option>
-                    <option value="ongoing">ongoing</option>
-                    <option value="colosed">closed</option>
+                    <option value="open">Open</option>
+                    <option value="closed">Closed</option>
                   </select>
+
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-black">{rfq.RFQNumber}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{rfq.shortName}</td>

@@ -26,6 +26,7 @@ const NewRFQForm = () => {
     RFQClosingTime: "",
     eReverseToggle: false,
     rfqType: "D2D",
+    status: "open",
   });
 
   const [vendors, setVendors] = useState([]);
