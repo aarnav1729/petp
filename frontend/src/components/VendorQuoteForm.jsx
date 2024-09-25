@@ -12,6 +12,7 @@ const VendorQuoteForm = ({ username }) => {
   const [quote, setQuote] = useState("");
   const [message, setMessage] = useState("");
   const [numberOfTrucks, setNumberOfTrucks] = useState("");
+  const [validityPeriod, setvalidityPeriod] = useState("");
   const [rfqDetails, setRfqDetails] = useState(null);
   const [vendorQuote, setVendorQuote] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +33,7 @@ const VendorQuoteForm = ({ username }) => {
         if (existingQuote) {
           setQuote(existingQuote.price);
           setNumberOfTrucks(existingQuote.numberOfTrucks);
+          setvalidityPeriod(existingQuote.validityPeriod);
           setMessage(existingQuote.message);
           setVendorQuote(existingQuote);
         }
@@ -59,11 +61,12 @@ const VendorQuoteForm = ({ username }) => {
     }
 
     // set loading state
-    setIsLoading(true); 
+    setIsLoading(true);
     try {
       const quoteData = {
         rfqId,
         quote,
+        validityPeriod,
         message,
         vendorName: username,
         numberOfTrucks: Number(numberOfTrucks),
@@ -84,7 +87,7 @@ const VendorQuoteForm = ({ username }) => {
       console.error("Error submitting quote:", error);
       alert("Failed to submit quote. Please try again.");
     } finally {
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   };
 
@@ -110,6 +113,11 @@ const VendorQuoteForm = ({ username }) => {
         setErrors((prevErrors) => ({ ...prevErrors, numberOfTrucks: "" }));
       }
       setNumberOfTrucks(value);
+    }
+
+    // set validityPeriod
+    if (name === "validityPeriod") {
+      setvalidityPeriod(value);
     }
 
     // set message
@@ -160,14 +168,14 @@ const VendorQuoteForm = ({ username }) => {
         <div className="mb-4">
           <label className="block mb-1">How long is your quote valid?</label>
           <textarea
-            name="message"
-            value={message}
+            name="validityPeriod"
+            value={validityPeriod}
             onChange={handleInputChange}
-            className="w-full p-2 border border-gray-300 rounded"
+            className="w-full p-1 border border-gray-300 rounded"
             disabled={isLoading}
           />
         </div>
-      
+
         <div className="mb-4">
           <label className="block mb-1">Message (Optional)</label>
           <textarea
@@ -181,9 +189,8 @@ const VendorQuoteForm = ({ username }) => {
 
         <button
           type="submit"
-          className={`w-full p-2 bg-blue-500 text-white rounded ${
-            isLoading ? "cursor-not-allowed opacity-50" : ""
-          }`}
+          className={`w-full p-2 bg-indigo-500 text-white rounded ${isLoading ? "cursor-not-allowed opacity-50" : ""
+            }`}
           disabled={isLoading}
         >
           {isLoading ? "Submitting..." : vendorQuote ? "Update Quote" : "Submit Quote"}

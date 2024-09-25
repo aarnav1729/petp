@@ -213,6 +213,7 @@ const quoteSchema = new mongoose.Schema({
   price: Number,
   message: String,
   numberOfTrucks: Number,
+  validityPeriod: String,
 });
 
 const Quote = mongoose.model("Quote", quoteSchema);
@@ -572,7 +573,7 @@ app.get("/api/rfqs", async (req, res) => {
 // endpoint for vendor to submit a quote
 app.post("/api/quote", async (req, res) => {
   try {
-    const { rfqId, quote, message, vendorName, numberOfTrucks } = req.body;
+    const { rfqId, quote, message, vendorName, numberOfTrucks, validityPeriod } = req.body;
 
     // save quote with vendorName
     const newQuote = new Quote({
@@ -580,6 +581,7 @@ app.post("/api/quote", async (req, res) => {
       vendorName,
       price: quote,
       numberOfTrucks,
+      validityPeriod,
       message,
     });
     await newQuote.save();
@@ -590,7 +592,7 @@ app.post("/api/quote", async (req, res) => {
       from: "aarnavsingh836@gmail.com",
       to: adminEmail,
       subject: "New Quote Submitted",
-      text: `A new quote has been submitted for RFQ ID: ${rfqId}\nVendor: ${vendorName}\nQuote: ${quote}\nMessage: ${message}`,
+      text: `A new quote has been submitted for RFQ ID: ${rfqId}\nVendor: ${vendorName}\nQuote: ${quote}\nValidity Period: ${validityPeriod}\nMessage: ${message}`,
     };
 
     const accessTokenResponse = await oAuth2Client.getAccessToken();
@@ -633,6 +635,7 @@ app.put("/api/quote/:quoteId", async (req, res) => {
         vendorName,
         price: quote,
         numberOfTrucks,
+        validityPeriod,
         message,
       },
       { new: true } // return the updated document
@@ -647,7 +650,7 @@ app.put("/api/quote/:quoteId", async (req, res) => {
       from: "aarnavsingh836@gmail.com",
       to: adminEmail,
       subject: "Quote Updated",
-      text: `A quote has been updated for RFQ ID: ${rfqId}\nVendor: ${vendorName}\nQuote: ${quote}\nMessage: ${message}`,
+      text: `A quote has been updated for RFQ ID: ${rfqId}\nVendor: ${vendorName}\nQuote: ${quote}\nValidity Period: ${validityPeriod}\nMessage: ${message}`,
     };
 
     const accessTokenResponse = await oAuth2Client.getAccessToken();
@@ -1034,12 +1037,12 @@ const updateRFQStatusBasedOnClosingDate = async () => {
     });
 
     for (const rfq of rfqs) {
-      rfq.status = "on-going";
+      rfq.status = "closed";
       await rfq.save();
     }
 
     console.log(
-      `${rfqs.length} RFQs updated to 'on-going' status based on closing date.`
+      `${rfqs.length} RFQs updated to 'closed' status based on closing date.`
     );
   } catch (error) {
     console.error("Error updating RFQ status based on closing date:", error);
