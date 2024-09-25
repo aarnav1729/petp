@@ -158,6 +158,17 @@ const VendorQuoteForm = ({ username }) => {
         </div>
 
         <div className="mb-4">
+          <label className="block mb-1">How long is your quote valid?</label>
+          <textarea
+            name="message"
+            value={message}
+            onChange={handleInputChange}
+            className="w-full p-2 border border-gray-300 rounded"
+            disabled={isLoading}
+          />
+        </div>
+      
+        <div className="mb-4">
           <label className="block mb-1">Message (Optional)</label>
           <textarea
             name="message"
