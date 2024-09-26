@@ -164,18 +164,18 @@ async function sendRFQEmail(rfqData, selectedVendorIds) {
             </thead>
             <tbody>
               ${Object.entries(rfqData)
-                .map(
-                  ([key, value]) => `
+            .map(
+              ([key, value]) => `
                 <tr>
                   <td style="padding: 8px; text-align: start;">${key.replace(
-                    /([A-Z])/g,
-                    " $1"
-                  )}</td>
+                /([A-Z])/g,
+                " $1"
+              )}</td>
                   <td style="padding: 8px; text-align: start;">${value}</td>
                 </tr>
               `
-                )
-                .join("")}
+            )
+            .join("")}
             </tbody>
           </table>
           <p>We look forward to receiving your quote.</p>
@@ -218,6 +218,18 @@ const quoteSchema = new mongoose.Schema({
 
 const Quote = mongoose.model("Quote", quoteSchema);
 
+// user schema and model
+const userSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  password: String,
+  email: { type: String, unique: true, required: true },
+  contactNumber: { type: String, unique: true, required: true },
+  role: { type: String, enum: ["vendor", "factory"], required: true },
+  status: { type: String, enum: ["pending", "approved"], default: "pending" },
+});
+
+const User = mongoose.model("User", userSchema);
+
 // rfq schema and model
 const rfqSchema = new mongoose.Schema({
   RFQNumber: String,
@@ -241,7 +253,7 @@ const rfqSchema = new mongoose.Schema({
   vehiclePlacementEndDate: Date,
   status: { type: String, enum: ["open", "closed"], default: "open" },
   RFQClosingDate: Date,
-  RFQClosingTime: { type: String, required: true },  
+  RFQClosingTime: { type: String, required: true },
   eReverseToggle: { type: Boolean, default: false },
   rfqType: { type: String, enum: ["Long Term", "D2D"], default: "D2D" },
 });
@@ -270,33 +282,94 @@ app.post("/api/login", async (req, res) => {
 
   // check if the role is vendor
   try {
-    // find the vendor with the given username and password
-    const vendor = await Vendor.findOne({ username, password });
-    // log the login attempt and vendor found
-    console.log("Vendor login attempt:", username, password);
-    // log the vendor found
-    console.log("Vendor found:", vendor);
+    const user = await User.findOne({ username, password, role });
 
-    // check if the vendor is found
-    if (vendor) {
-      return (
-        res
-          .status(200)
-          // return success response with vendor name
-          .json({ success: true, vendorName: vendor.vendorName })
-      );
+    if (user) {
+      if (user.status === "approved") {
+        return res.status(200).json({ success: true, username: user.username });
+      } else {
+        return res.status(403).json({ success: false, message: "Account pending admin approval" });
+      }
     } else {
-      return (
-        res
-          .status(401)
-          // return error response
-          .json({ success: false, message: "Invalid vendor credentials" })
-      );
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
   } catch (error) {
-    // log error if login fails
     console.error("Error during login:", error);
     return res.status(500).json({ success: false });
+  }
+});
+
+// Endpoint to fetch all pending accounts
+app.get("/api/pending-accounts", async (req, res) => {
+  try {
+    const pendingAccounts = await User.find({ status: "pending" });
+    res.status(200).json(pendingAccounts);
+  } catch (error) {
+    console.error("Error fetching pending accounts:", error);
+    res.status(500).json({ error: "Failed to fetch pending accounts" });
+  }
+});
+
+// Endpoint to approve a user account
+app.post("/api/approve-account/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByIdAndUpdate(id, { status: "approved" }, { new: true });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // If the user is a vendor, create an entry in the Vendor collection
+    if (user.role === "vendor") {
+      const newVendor = new Vendor({
+        username: user.username,
+        password: user.password,
+        email: user.email,
+        contactNumber: user.contactNumber,
+        vendorName: user.username,
+      });
+      await newVendor.save();
+    }
+
+    // Send account approval email
+    const mailOptions = {
+      from: "aarnavsingh836@gmail.com",
+      to: user.email,
+      subject: "Account Approved",
+      text: `
+        Dear ${user.username},
+
+        Congratulations! Your account has been approved by the admin.
+        You can now log in to the portal using your credentials.
+
+        Best regards,
+        Premier Energies Team
+      `,
+    };
+
+    const accessTokenResponse = await oAuth2Client.getAccessToken();
+    const accessToken = accessTokenResponse.token;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        type: "OAuth2",
+        user: "aarnavsingh836@gmail.com",
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        refreshToken: REFRESH_TOKEN,
+        accessToken: accessToken,
+      },
+    });
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ message: "User account approved and email sent." });
+  } catch (error) {
+    console.error("Error approving user account:", error);
+    res.status(500).json({ error: "Failed to approve user account" });
   }
 });
 
@@ -319,8 +392,7 @@ app.get("/api/active-auctions", async (req, res) => {
       if (!rfq.eReverseToggle) return false;
       // create a moment object for the ereversedate and ereversetime
       const eReverseDateTime = moment.tz(
-        `${moment(rfq.eReverseDate).format("YYYY-MM-DD")}T${
-          rfq.eReverseTime
+        `${moment(rfq.eReverseDate).format("YYYY-MM-DD")}T${rfq.eReverseTime
         }:00`,
         "Asia/Kolkata"
       );
@@ -360,18 +432,19 @@ app.get("/api/active-auctions", async (req, res) => {
 // endpoint for vendor registration
 app.post("/api/register", async (req, res) => {
   // extract the required fields from the request body
-  const { username, password, vendorName, email, contactNumber } = req.body;
+  const { username, password, vendorName, email, contactNumber, role } = req.body;
 
   // check if the username, password, vendorName, email, and contact number are provided
   try {
-    const newVendor = new Vendor({
+    const newUser = new User({
       username,
       password,
-      vendorName,
       email,
       contactNumber,
+      role,
+      status: "pending",
     });
-    await newVendor.save();
+    await newUser.save();
 
     // send the welcome email
     const mailOptions = {
@@ -379,7 +452,7 @@ app.post("/api/register", async (req, res) => {
       to: email,
       subject: "Welcome to Premier Energies",
       text: `
-        Dear ${vendorName},
+        Dear ${username},
 
         Welcome to Premier Energies! We're excited to have you onboard.
 
@@ -387,7 +460,8 @@ app.post("/api/register", async (req, res) => {
         Username: ${username}
         Password: ${password}
 
-        You can now log in to our portal and start participating in RFQs.
+        Thank you for registering with us! Your account is currently pending admin approval.
+        You will be notified once your account has been approved.
 
         Best regards,
         Premier Energies Team
@@ -419,7 +493,7 @@ app.post("/api/register", async (req, res) => {
       .status(201)
       .json({
         success: true,
-        message: "Vendor registered successfully and welcome email sent.",
+        message: "User registered successfully and welcome email sent.",
       });
   } catch (error) {
     // log error if vendor registration fails
@@ -444,6 +518,19 @@ app.post("/api/add-vendor", async (req, res) => {
     });
 
     await newVendor.save();
+
+
+    // Also create a User entry
+    const newUser = new User({
+      username,
+      password,
+      email,
+      contactNumber,
+      role: "vendor",
+      status: "approved",
+    });
+
+    await newUser.save();
 
     // send the welcome email (if needed)
     const mailOptions = {
@@ -742,6 +829,9 @@ app.delete("/api/vendors/:id", async (req, res) => {
     if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });
     }
+
+    // Also delete from User collection
+    await User.findOneAndDelete({ username: vendor.username });
 
     res.status(200).json({ message: "Vendor deleted successfully" });
   } catch (error) {
@@ -1125,8 +1215,7 @@ async function sendReminderEmails() {
               Dear ${labeledQuote.vendorName},
 
               Your status for RFQ ${rfq.RFQNumber} is ${labeledQuote.label}.
-              The number of trucks allotted to you is ${
-                labeledQuote.actualTrucksAllotted
+              The number of trucks allotted to you is ${labeledQuote.actualTrucksAllotted
               }.
 
               Please be ready for the e-reverse process at:

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import Header from "./Header";
 import Footer from "./Footer";
+import { useNavigate } from "react-router-dom";
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState("");
@@ -10,56 +11,54 @@ const Login = ({ onLogin }) => {
   const [email, setEmail] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (role === "admin" && username === "admin" && password === "admin") {
       onLogin(role, username);
-    } 
-    
-    else if (role === "vendor" && !isRegistering) {
+    }
+
+    else if ((role === "vendor" || role === "factory") && !isRegistering) {
       try {
-        const response = await axios.post("https://petp.onrender.com/api/login", { username, password, role });
+        const response = await axios.post("https://petp.onrender.com/api/login", {
+          username,
+          password,
+          role,
+        });
         if (response.data.success) {
-          onLogin(role, response.data.vendorName);
-        } 
-        
-        else {
-          alert("Invalid credentials");
+          onLogin(role, response.data.username);
+        } else {
+          alert(response.data.message || "Invalid credentials");
         }
-      } 
-      
-      catch (error) {
+      } catch (error) {
         console.error("Login error:", error);
         alert("An error occurred during login. Please try again.");
       }
-    } 
-    else if (role === "vendor" && isRegistering) {
+    }
+
+    else if ((role === "vendor" || role === "factory") && isRegistering) {
       try {
-        const response = await axios.post("https://petp.onrender.com/api/register", { username, password, vendorName: username, email, contactNumber });
-        
+        const response = await axios.post("https://petp.onrender.com/api/register", {
+          username,
+          password,
+          email,
+          contactNumber,
+          role,
+        });
+
         if (response.data.success) {
-          alert("Vendor registered successfully! You can now log in.");
-          setIsRegistering(false);
-        } 
-        
-        else {
+          alert("Registration successful! Your account is pending admin approval.");
+          navigate("/registering");
+        } else {
           alert("Registration failed");
         }
-      } 
-      
-      catch (error) {
+      } catch (error) {
         console.error("Registration error:", error);
         alert("An error occurred during registration. Please try again.");
       }
-    } 
-    
-    else if (role === "factory" && username === "factory" && password === "factory") {
-      onLogin(role, username);
-    } 
-    
-    else {
+    } else {
       alert("Invalid credentials");
     }
   };
@@ -75,7 +74,7 @@ const Login = ({ onLogin }) => {
 
       <div className="flex justify-center items-center flex-grow mt-20 p-10">
         <div className="p-8 bg-white rounded-lg shadow-2xl w-full max-w-md">
-          
+
           <h2 className="mb-8 text-3xl font-bold text-center text-gray-800">
             {isRegistering ? "Create Account" : "Sign In"}
           </h2>
@@ -143,38 +142,38 @@ const Login = ({ onLogin }) => {
               />
             </div>
 
-            {isRegistering && role === "vendor" && (
-              <div>
-                <label className="block mb-2 text-sm font-medium text-black">
-                  Email
-                </label>
+            {isRegistering && (role === "vendor" || role === "factory") && (
+              <>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-black">
+                    Email
+                  </label>
 
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-3 border bg-gray-200 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-black"
-                  placeholder="Enter your email"
-                  required
-                />
-              </div>
-            )}
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full p-3 border bg-gray-200 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-black"
+                    placeholder="Enter your email"
+                    required
+                  />
+                </div>
 
-            {isRegistering && role === "vendor" && (
-              <div>
-                <label className="block mb-2 text-sm font-medium text-black">
-                  Contact Number
-                </label>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-black">
+                    Contact Number
+                  </label>
 
-                <input
-                  type="text"
-                  value={contactNumber}
-                  onChange={(e) => setContactNumber(e.target.value)}
-                  className="w-full p-3 border bg-gray-200 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-black"
-                  placeholder="Enter your phone number"
-                  required
-                />
-              </div>
+                  <input
+                    type="text"
+                    value={contactNumber}
+                    onChange={(e) => setContactNumber(e.target.value)}
+                    className="w-full p-3 border bg-gray-200 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-black"
+                    placeholder="Enter your phone number"
+                    required
+                  />
+                </div>
+              </>
             )}
 
             <button
@@ -184,7 +183,7 @@ const Login = ({ onLogin }) => {
               {isRegistering ? "Register" : "Login"}
             </button>
 
-            {role === "vendor" && (
+            {(role === "vendor" || role === "factory") && (
               <button
                 type="button"
                 className="w-full py-2 mt-4 text-indigo-600 hover:underline  hover:text-indigo-900 text-center font-medium"

@@ -13,6 +13,8 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import PendingRFQs from "./components/PendingRFQs";
 import ClosedRFQs from "./components/ClosedRFQs";
+import Registering from "./components/Registering";
+import Accounts from "./components/Accounts";
 
 const App = () => {
   const [role, setRole] = useState(null);
@@ -31,38 +33,61 @@ const App = () => {
   return (
     <Router>
       <div className="App min-h-screen bg-gradient-to-r from-blue-500 to-green-600 flex flex-col">
-        
         {!role ? (
-          <Login onLogin={(role, user) => handleLogin(role, user)} />
+          <Routes>
+            <Route path="/" element={<Login onLogin={handleLogin} />} />
+            <Route path="/registering" element={<Registering />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
         ) : (
-          
           <div className="flex flex-col flex-grow">
             <Header role={role} onLogout={handleLogout} />
             <main className="flex-grow p-4">
-              
               <Routes>
-                <Route path="/" element={<Navigate to={
-                  role === "admin" ? "/rfq-list" :
-                    role === "factory" ? "/new-rfq" :
-                      "/vendor-rfq-list"
-                } />} />
+                <Route
+                  path="/"
+                  element={
+                    <Navigate
+                      to={
+                        role === "admin"
+                          ? "/rfq-list"
+                          : role === "factory"
+                          ? "/new-rfq"
+                          : "/vendor-rfq-list"
+                      }
+                    />
+                  }
+                />
 
                 {role === "admin" && (
                   <>
                     <Route path="/rfq-list" element={<RFQList />} />
                     <Route path="/vendor-list" element={<VendorList />} />
                     <Route path="/active-auctions" element={<ActiveAuctions />} />
-                    <Route path="/auction-room/:rfqId" element={<AuctionRoom username={username} role={role} />} />
+                    <Route
+                      path="/auction-room/:rfqId"
+                      element={<AuctionRoom username={username} role={role} />}
+                    />
                     <Route path="/rfq/:rfqId" element={<RFQDetailsPage userRole={role} />} />
+                    <Route path="/accounts" element={<Accounts />} />
                   </>
                 )}
 
                 {role === "vendor" && (
                   <>
-                    <Route path="/vendor-rfq-list" element={<VendorRFQList username={username} />} />
-                    <Route path="/vendor-quote-form/:rfqId" element={<VendorQuoteForm username={username} />} />
+                    <Route
+                      path="/vendor-rfq-list"
+                      element={<VendorRFQList username={username} />}
+                    />
+                    <Route
+                      path="/vendor-quote-form/:rfqId"
+                      element={<VendorQuoteForm username={username} />}
+                    />
                     <Route path="/active-auctions" element={<ActiveAuctions />} />
-                    <Route path="/auction-room/:rfqId" element={<AuctionRoom username={username} role={role} />} />
+                    <Route
+                      path="/auction-room/:rfqId"
+                      element={<AuctionRoom username={username} role={role} />}
+                    />
                     <Route path="/pending-rfqs" element={<PendingRFQs username={username} />} />
                   </>
                 )}
