@@ -523,7 +523,7 @@ app.post("/api/rfq", async (req, res) => {
       : "RFQ1";
 
     // Add the generated RFQ number to the request body
-    const newRFQData = { ...req.body, RFQNumber: nextRFQNumber, status: (req.body.status || "open").toLowerCase(), };
+    const newRFQData = { ...req.body, RFQNumber: nextRFQNumber, status: "open" };
 
     // Create a new RFQ with the generated number
     const rfq = new RFQ(newRFQData);
@@ -1030,15 +1030,11 @@ app.post("/api/send-reminder", async (req, res) => {
 // Function to check and update RFQ status based on the closing date and time
 const updateRFQStatusBasedOnClosingDate = async () => {
   try {
-    const now = moment().tz('Asia/Kolkata'); // Current time
-    const rfqs = await RFQ.find({ status: "open" });  // Only check "open" RFQs
+    const now = moment().tz('Asia/Kolkata');
+    const rfqs = await RFQ.find({ status: "open" });
 
     for (const rfq of rfqs) {
-      const closingDateTime = moment.tz(
-        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${rfq.RFQClosingTime}`,
-        'Asia/Kolkata'
-      );
-          
+      const closingDateTime = moment(rfq.RFQClosingDateTime).tz('Asia/Kolkata');
 
       if (now.isAfter(closingDateTime)) {
         rfq.status = "closed";

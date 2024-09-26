@@ -26,7 +26,6 @@ const NewRFQForm = () => {
     RFQClosingTime: "",
     eReverseToggle: false,
     rfqType: "D2D",
-    status: "open",
   });
 
   const [vendors, setVendors] = useState([]);
@@ -157,7 +156,9 @@ const NewRFQForm = () => {
   
     setIsLoading(true);
     try {
-      const RFQClosingDateTime = new Date(`${formData.RFQClosingDate}T${formData.RFQClosingTime}:00`);
+      const RFQClosingDateTime = new Date(
+        `${formData.RFQClosingDate}T${formData.RFQClosingTime}:00`
+      );
       const eReverseDateTime = formData.eReverseToggle
         ? new Date(`${formData.eReverseDate}T${formData.eReverseTime}`)
         : null;
@@ -165,8 +166,7 @@ const NewRFQForm = () => {
       const dataToSend = {
         ...formData, 
         selectedVendors, 
-        RFQClosingDate: formData.RFQClosingDate,
-        RFQClosingTime: formData.RFQClosingTime,
+        RFQClosingDate: RFQClosingDateTime,
         eReverseDate: eReverseDateTime,
       };
   

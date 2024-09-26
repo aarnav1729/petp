@@ -54,8 +54,17 @@ const RFQList = () => {
   };
 
   const filteredRfqs = rfqs
-  .filter(rfq => Object.values(rfq).join(' ').toLowerCase().includes(searchTerm.toLowerCase()))
-  .filter(rfq => filterStatus ? rfq.status.toLowerCase() === filterStatus.toLowerCase() : true);
+  .filter((rfq) =>
+    Object.values(rfq)
+      .join(" ")
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
+  )
+  .filter((rfq) =>
+    filterStatus
+      ? (rfq.status || "open").toLowerCase() === filterStatus.toLowerCase()
+      : true
+  );
 
   return (
     <div className="container mx-auto mt-8 px-4 py-6 bg-white rounded-lg shadow-lg">
