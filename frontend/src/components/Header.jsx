@@ -9,7 +9,8 @@ const Header = ({ role, onLogout }) => {
   const navLinks = role === "admin" ? [
     { to: "/rfq-list", label: "RFQ List" },
     { to: "/vendor-list", label: "Vendor List" },
-    { to: "/active-auctions", label: "Active Auctions" }
+    { to: "/active-auctions", label: "Active Auctions" },
+    { to: "/accounts", label: "Accounts" } // Added Accounts link for admin
   ] : role === "vendor" ? [
     { to: "/vendor-rfq-list", label: "View RFQs" },
     { to: "/active-auctions", label: "Active Auctions" },
