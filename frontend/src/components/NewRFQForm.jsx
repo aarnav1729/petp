@@ -165,7 +165,7 @@ const NewRFQForm = () => {
       const dataToSend = {
         ...formData, 
         selectedVendors, 
-        RFQClosingDate: RFQClosingDateTime,
+        RFQClosingDate: formData.RFQClosingDate,
         RFQClosingTime: formData.RFQClosingTime,
         eReverseDate: eReverseDateTime,
       };

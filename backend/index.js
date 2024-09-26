@@ -241,7 +241,7 @@ const rfqSchema = new mongoose.Schema({
   vehiclePlacementEndDate: Date,
   status: { type: String, enum: ["open", "closed"], default: "open" },
   RFQClosingDate: Date,
-  RFQClosingTime: { type: String, required: true },
+  RFQClosingTime: { type: String, required: true },  
   eReverseToggle: { type: Boolean, default: false },
   rfqType: { type: String, enum: ["Long Term", "D2D"], default: "D2D" },
 });
@@ -523,7 +523,7 @@ app.post("/api/rfq", async (req, res) => {
       : "RFQ1";
 
     // Add the generated RFQ number to the request body
-    const newRFQData = { ...req.body, RFQNumber: nextRFQNumber };
+    const newRFQData = { ...req.body, RFQNumber: nextRFQNumber, status: (req.body.status || "open").toLowerCase(), };
 
     // Create a new RFQ with the generated number
     const rfq = new RFQ(newRFQData);
@@ -755,13 +755,14 @@ app.patch("/api/rfq/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const normalizedStatus = status.toLowerCase();
 
     // ensure that the ID is valid for MongoDB ObjectID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "Invalid RFQ ID" });
     }
 
-    const rfq = await RFQ.findByIdAndUpdate(id, { status }, { new: true });
+    const rfq = await RFQ.findByIdAndUpdate(id, { status: normalizedStatus }, { new: true });
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
     }
@@ -1033,7 +1034,11 @@ const updateRFQStatusBasedOnClosingDate = async () => {
     const rfqs = await RFQ.find({ status: "open" });  // Only check "open" RFQs
 
     for (const rfq of rfqs) {
-      const closingDateTime = moment.tz(`${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${rfq.RFQClosingTime}:00`, 'Asia/Kolkata');
+      const closingDateTime = moment.tz(
+        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${rfq.RFQClosingTime}`,
+        'Asia/Kolkata'
+      );
+          
 
       if (now.isAfter(closingDateTime)) {
         rfq.status = "closed";
@@ -1046,7 +1051,6 @@ const updateRFQStatusBasedOnClosingDate = async () => {
   }
 };
 
-// schedule a cron job to run daily at midnight
 cron.schedule("* * * * *", updateRFQStatusBasedOnClosingDate);
 
 // function to send reminder emails to vendors

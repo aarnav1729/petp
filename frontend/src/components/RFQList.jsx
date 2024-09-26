@@ -53,8 +53,9 @@ const RFQList = () => {
     return date.toLocaleDateString();
   };
 
-  const filteredRfqs = rfqs.filter(rfq => Object.values(rfq).join(' ').toLowerCase().includes(searchTerm.toLowerCase()))
-    .filter(rfq => filterStatus ? rfq.status === filterStatus : true);
+  const filteredRfqs = rfqs
+  .filter(rfq => Object.values(rfq).join(' ').toLowerCase().includes(searchTerm.toLowerCase()))
+  .filter(rfq => filterStatus ? rfq.status.toLowerCase() === filterStatus.toLowerCase() : true);
 
   return (
     <div className="container mx-auto mt-8 px-4 py-6 bg-white rounded-lg shadow-lg">
@@ -115,8 +116,8 @@ const RFQList = () => {
                     onChange={(e) => updateStatus(rfq._id, e.target.value)}
                     className="mt-1 block w-full px-1 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   >
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
+                    <option value="open">open</option>
+                    <option value="closed">closed</option>
                   </select>
 
                 </td>
