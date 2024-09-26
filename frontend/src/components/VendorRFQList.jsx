@@ -92,16 +92,21 @@ const VendorRFQList = ({ username }) => {
                 className="cursor-pointer hover:bg-blue-200"
               >
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/vendor-quote-form/${rfq._id}`);
-                    }}
-                    className="text-indigo-600 hover:text-indigo-900"
-                  >
-                    {vendorQuotes[rfq._id] ? "Update Quote" : "View & Quote"}
-                  </button>
+                  {rfq.status !== "closed" ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/vendor-quote-form/${rfq._id}`);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      {vendorQuotes[rfq._id] ? "Update Quote" : "View & Quote"}
+                    </button>
+                  ) : (
+                    <span className="text-gray-500">Closed</span>
+                  )}
                 </td>
+
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                   {rfq.RFQNumber}
                 </td>
