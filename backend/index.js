@@ -1034,7 +1034,15 @@ const updateRFQStatusBasedOnClosingDate = async () => {
     const rfqs = await RFQ.find({ status: "open" });
 
     for (const rfq of rfqs) {
-      const closingDateTime = moment(rfq.RFQClosingDateTime).tz('Asia/Kolkata');
+      if (!rfq.RFQClosingDate || !rfq.RFQClosingTime) {
+        console.warn(`RFQ ${rfq.RFQNumber} is missing closing date or time.`);
+        continue;
+      }
+
+      const closingDateTime = moment.tz(
+        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${rfq.RFQClosingTime}:00`,
+        "Asia/Kolkata"
+      );
 
       if (now.isAfter(closingDateTime)) {
         rfq.status = "closed";
