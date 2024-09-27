@@ -256,6 +256,7 @@ const rfqSchema = new mongoose.Schema({
   RFQClosingTime: { type: String, required: true },
   eReverseToggle: { type: Boolean, default: false },
   rfqType: { type: String, enum: ["Long Term", "D2D"], default: "D2D" },
+  selectedVendors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' }],
 });
 
 const RFQ = mongoose.model("RFQ", rfqSchema);
@@ -303,7 +304,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// Endpoint to fetch all pending accounts
+// endpoint to fetch all pending accounts
 app.get("/api/pending-accounts", async (req, res) => {
   try {
     const pendingAccounts = await User.find({ status: "pending" });
@@ -314,7 +315,7 @@ app.get("/api/pending-accounts", async (req, res) => {
   }
 });
 
-// Endpoint to approve a user account
+// endpoint to approve a user account
 app.post("/api/approve-account/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -621,6 +622,7 @@ app.post("/api/rfq", async (req, res) => {
       ...req.body,
       RFQNumber: nextRFQNumber,
       status: "open",
+      selectedVendors: req.body.selectedVendors,
     };
 
     // Create a new RFQ with the generated number
@@ -788,7 +790,7 @@ app.get("/api/rfq/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid RFQ ID" });
     }
 
-    const rfq = await RFQ.findById(id);
+    const rfq = await RFQ.findById(id).populate('selectedVendors');
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
     }
@@ -797,6 +799,38 @@ app.get("/api/rfq/:id", async (req, res) => {
   } catch (error) {
     console.error("Error fetching RFQ details:", error);
     res.status(500).json({ error: "Failed to fetch RFQ details" });
+  }
+});
+
+// endpoint to add vendors to an existing rfq
+app.post("/api/rfq/:id/add-vendors", async (req, res) => {
+  const { id } = req.params;
+  const { vendorIds } = req.body;
+
+  try {
+    const rfq = await RFQ.findById(id);
+    if (!rfq) {
+      return res.status(404).json({ error: "RFQ not found" });
+    }
+
+    // Update the selectedVendors list
+    const existingVendorIds = rfq.selectedVendors.map((vendorId) => vendorId.toString());
+    const newVendorIds = vendorIds.filter((vendorId) => !existingVendorIds.includes(vendorId));
+
+    rfq.selectedVendors = rfq.selectedVendors.concat(newVendorIds);
+    await rfq.save();
+
+    // Send RFQ email to the newly added vendors
+    const emailResponse = await sendRFQEmail(rfq, newVendorIds);
+
+    if (!emailResponse.success) {
+      return res.status(500).json({ message: "Failed to send emails to added vendors." });
+    }
+
+    res.status(200).json({ message: "Vendors added and emails sent successfully." });
+  } catch (error) {
+    console.error("Error adding vendors to RFQ:", error);
+    res.status(500).json({ error: "Failed to add vendors to RFQ" });
   }
 });
 

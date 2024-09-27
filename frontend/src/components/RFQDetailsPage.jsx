@@ -9,20 +9,32 @@ const RFQDetailsPage = ({ userRole }) => {
   const [quotes, setQuotes] = useState([]);
   const [activeTab, setActiveTab] = useState("details");
   const [vendors, setVendors] = useState([]);
-  const [selectedVendors, setSelectedVendors] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSending, setIsSending] = useState(false); // New state for handling loading
-  const [statusMessage, setStatusMessage] = useState(""); // New state for displaying status
+
+  // State variables for vendor selections and modals
+  const [reminderSelectedVendors, setReminderSelectedVendors] = useState([]);
+  const [addVendorsSelectedVendors, setAddVendorsSelectedVendors] = useState([]);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [isAddVendorsModalOpen, setIsAddVendorsModalOpen] = useState(false);
+
+  const [isSending, setIsSending] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+
+  const fetchRFQDetails = async () => {
+    try {
+      const response = await axios.get(`https://petp.onrender.com/api/rfq/${rfqId}`);
+      setRfqDetails(response.data);
+
+      // Initialize the reminder selected vendors with those already selected in the RFQ
+      if (response.data.selectedVendors) {
+        setReminderSelectedVendors(response.data.selectedVendors.map((vendor) => vendor._id));
+      }
+    } catch (error) {
+      console.error("Error fetching RFQ details:", error);
+    }
+  };
 
   useEffect(() => {
-    const fetchRFQDetails = async () => {
-      try {
-        const response = await axios.get(`https://petp.onrender.com/api/rfq/${rfqId}`);
-        setRfqDetails(response.data);
-      } catch (error) {
-        console.error("Error fetching RFQ details:", error);
-      }
-    };
+    fetchRFQDetails();
 
     const fetchQuotes = async () => {
       try {
@@ -42,13 +54,33 @@ const RFQDetailsPage = ({ userRole }) => {
       }
     };
 
-    fetchRFQDetails();
     fetchQuotes();
     fetchVendors();
   }, [rfqId]);
 
-  const handleVendorSelection = (vendorId) => {
-    setSelectedVendors((prevSelected) =>
+  const reminderVendors = vendors.filter((vendor) =>
+    rfqDetails &&
+    rfqDetails.selectedVendors &&
+    rfqDetails.selectedVendors.some((selectedVendor) => selectedVendor._id === vendor._id)
+  );
+
+  const addVendorsList = vendors.filter(
+    (vendor) =>
+      !rfqDetails ||
+      !rfqDetails.selectedVendors ||
+      !rfqDetails.selectedVendors.some((selectedVendor) => selectedVendor._id === vendor._id)
+  );
+
+  const handleReminderVendorSelection = (vendorId) => {
+    setReminderSelectedVendors((prevSelected) =>
+      prevSelected.includes(vendorId)
+        ? prevSelected.filter((id) => id !== vendorId)
+        : [...prevSelected, vendorId]
+    );
+  };
+
+  const handleAddVendorsSelection = (vendorId) => {
+    setAddVendorsSelectedVendors((prevSelected) =>
       prevSelected.includes(vendorId)
         ? prevSelected.filter((id) => id !== vendorId)
         : [...prevSelected, vendorId]
@@ -56,21 +88,42 @@ const RFQDetailsPage = ({ userRole }) => {
   };
 
   const sendParticipationReminder = async () => {
-    setIsSending(true); // Disable button and show loading indicator
-    setStatusMessage(""); // Reset status message
-
+    setIsSending(true);
+    setStatusMessage("");
     try {
       const response = await axios.post("https://petp.onrender.com/api/send-reminder", {
         rfqId,
-        vendorIds: selectedVendors,
+        vendorIds: reminderSelectedVendors,
       });
 
       setStatusMessage(response.data.message || "Reminder sent successfully!");
     } catch (error) {
       setStatusMessage("Error sending participation reminder.");
     } finally {
-      setIsSending(false); // Re-enable the button after completion
-      setIsModalOpen(false); // Close the modal
+      setIsSending(false);
+      setIsReminderModalOpen(false);
+    }
+  };
+
+  const addVendorsToRFQ = async () => {
+    setIsSending(true);
+    setStatusMessage("");
+    try {
+      const response = await axios.post(`https://petp.onrender.com/api/rfq/${rfqId}/add-vendors`, {
+        vendorIds: addVendorsSelectedVendors,
+      });
+
+      setStatusMessage(response.data.message || "Vendors added successfully!");
+
+      // Re-fetch the RFQ details to update the selectedVendors list
+      await fetchRFQDetails();
+      // Reset the selected vendors for adding
+      setAddVendorsSelectedVendors([]);
+    } catch (error) {
+      setStatusMessage("Error adding vendors to RFQ.");
+    } finally {
+      setIsSending(false);
+      setIsAddVendorsModalOpen(false);
     }
   };
 
@@ -81,15 +134,24 @@ const RFQDetailsPage = ({ userRole }) => {
 
     return sortedQuotes.map((quote, index) => {
       if (totalTrucks < requiredTrucks) {
-        const trucksToAllot = Math.min(quote.numberOfTrucks, requiredTrucks - totalTrucks);
+        const trucksToAllot = Math.min(
+          quote.numberOfTrucks,
+          requiredTrucks - totalTrucks
+        );
         totalTrucks += trucksToAllot;
-        return { ...quote, label: `L${index + 1}`, trucksAllotted: trucksToAllot };
+        return {
+          ...quote,
+          label: `L${index + 1}`,
+          trucksAllotted: trucksToAllot,
+        };
       }
       return { ...quote, label: "-", trucksAllotted: 0 };
     });
   };
 
-  const labeledQuotes = rfqDetails ? assignQuoteLabels(quotes, rfqDetails?.numberOfVehicles) : [];
+  const labeledQuotes = rfqDetails
+    ? assignQuoteLabels(quotes, rfqDetails?.numberOfVehicles)
+    : [];
 
   return (
     <div className="container mx-auto px-3 py-7 bg-white rounded-lg shadow-lg">
@@ -103,13 +165,21 @@ const RFQDetailsPage = ({ userRole }) => {
       {/* Tab Navigation */}
       <div className="flex justify-center mb-6">
         <button
-          className={`px-4 py-2 mx-2 rounded-lg ${activeTab === "details" ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-800 opacity-80"}`}
+          className={`px-4 py-2 mx-2 rounded-lg ${
+            activeTab === "details"
+              ? "bg-indigo-600 text-white"
+              : "bg-gray-200 text-gray-800 opacity-80"
+          }`}
           onClick={() => setActiveTab("details")}
         >
           RFQ Details
         </button>
         <button
-          className={`px-4 py-2 mx-2 rounded-lg ${activeTab === "quotes" ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-800 opacity-80"}`}
+          className={`px-4 py-2 mx-2 rounded-lg ${
+            activeTab === "quotes"
+              ? "bg-indigo-600 text-white"
+              : "bg-gray-200 text-gray-800 opacity-80"
+          }`}
           onClick={() => setActiveTab("quotes")}
         >
           Vendor Quotes
@@ -122,11 +192,15 @@ const RFQDetailsPage = ({ userRole }) => {
           <div>
             <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(rfqDetails)
-                .filter(([key]) => !["_id", "__v"].includes(key))
+                .filter(([key]) => !["_id", "__v", "selectedVendors"].includes(key))
                 .map(([key, value]) => (
                   <div key={key} className="mt-1">
-                    <dt className="inline font-medium">{key.split(/(?=[A-Z])/).join(" ")}:</dt>
-                    <dd className="inline ml-2 text-black">{value ? value.toString() : "N/A"}</dd>
+                    <dt className="inline font-medium">
+                      {key.split(/(?=[A-Z])/).join(" ")}:
+                    </dt>
+                    <dd className="inline ml-2 text-black">
+                      {value ? value.toString() : "N/A"}
+                    </dd>
                   </div>
                 ))}
             </dl>
@@ -140,37 +214,66 @@ const RFQDetailsPage = ({ userRole }) => {
       {activeTab === "quotes" && (
         <div>
           {rfqDetails && !rfqDetails.eReverseToggle && (
-            <p className="text-center text-red-500 mb-4">eReverse auction is not enabled for this RFQ.</p>
+            <p className="text-center text-red-500 mb-4">
+              eReverse auction is not enabled for this RFQ.
+            </p>
           )}
           {quotes.length === 0 ? (
-            <p className="text-center text-black">No quotes available for this RFQ.</p>
+            <p className="text-center text-black">
+              No quotes available for this RFQ.
+            </p>
           ) : (
             <div className="overflow-x-auto rounded-lg">
               <table className="min-w-full divide-y divide-black">
                 <thead className="bg-green-600 rounded-lg">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">Vendor Name</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">Number of Trucks</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">Quote</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">Label</th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">Trucks Allotted</th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Vendor Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Number of Trucks
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Quote
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Label
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Trucks Allotted
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-black">
                   {labeledQuotes.map((quote) => (
                     <tr key={quote._id} className="hover:bg-blue-200">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{quote.vendorName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{quote.numberOfTrucks}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        {userRole === "factory" ? <span className="blur-sm">Blurred</span> : quote.price}
+                        {quote.vendorName}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        {userRole === "factory" ? <span className="blur-sm">Blurred</span> : quote.label}
+                        {quote.numberOfTrucks}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        {userRole === "factory" ? <span className="blur-sm">Blurred</span> : quote.trucksAllotted}
+                        {userRole === "factory" ? (
+                          <span className="blur-sm">Blurred</span>
+                        ) : (
+                          quote.price
+                        )}
                       </td>
-
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {userRole === "factory" ? (
+                          <span className="blur-sm">Blurred</span>
+                        ) : (
+                          quote.label
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {userRole === "factory" ? (
+                          <span className="blur-sm">Blurred</span>
+                        ) : (
+                          quote.trucksAllotted
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -178,29 +281,35 @@ const RFQDetailsPage = ({ userRole }) => {
             </div>
           )}
 
-          {/* Send Participation Reminder Button */}
+          {/* Buttons for Actions */}
           <div className="mt-6 flex justify-center">
             <button
-              className="text-white bg-blue-500 hover:bg-blue-700 font-bold py-2 px-4 rounded-full"
-              onClick={() => setIsModalOpen(true)}
+              className="text-white bg-blue-500 hover:bg-blue-700 font-bold py-2 px-4 rounded-full mr-2"
+              onClick={() => setIsReminderModalOpen(true)}
             >
               Send Participation Reminder
             </button>
+            <button
+              className="text-white bg-green-500 hover:bg-green-700 font-bold py-2 px-4 rounded-full"
+              onClick={() => setIsAddVendorsModalOpen(true)}
+            >
+              Add Vendors to RFQ
+            </button>
           </div>
 
-          {/* Modal for Vendor Selection */}
-          {isModalOpen && (
+          {/* Send Participation Reminder Modal */}
+          {isReminderModalOpen && (
             <div className="fixed z-50 inset-0 overflow-y-auto">
               <div className="flex items-center justify-center min-h-screen">
                 <div className="bg-white p-6 rounded-lg shadow-lg w-3/4">
-                  <h2 className="text-xl font-bold mb-4">Select Vendors</h2>
+                  <h2 className="text-xl font-bold mb-4">Select Vendors for Reminder</h2>
                   <ul className="mb-4">
-                    {vendors.map((vendor) => (
+                    {reminderVendors.map((vendor) => (
                       <li key={vendor._id} className="flex items-center mb-2">
                         <input
                           type="checkbox"
-                          checked={selectedVendors.includes(vendor._id)}
-                          onChange={() => handleVendorSelection(vendor._id)}
+                          checked={reminderSelectedVendors.includes(vendor._id)}
+                          onChange={() => handleReminderVendorSelection(vendor._id)}
                           className="mr-2"
                         />
                         {vendor.vendorName}
@@ -210,16 +319,59 @@ const RFQDetailsPage = ({ userRole }) => {
                   <div className="flex justify-end">
                     <button
                       className="mr-4 bg-gray-300 hover:bg-gray-400 text-black py-2 px-4 rounded"
-                      onClick={() => setIsModalOpen(false)}
+                      onClick={() => setIsReminderModalOpen(false)}
                     >
                       Cancel
                     </button>
                     <button
-                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${isSending ? "opacity-50 cursor-not-allowed" : ""}`}
+                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${
+                        isSending ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                       onClick={sendParticipationReminder}
-                      disabled={isSending} // Disable the button while sending
+                      disabled={isSending}
                     >
                       {isSending ? "Sending..." : "Send Reminder"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Add Vendors to RFQ Modal */}
+          {isAddVendorsModalOpen && (
+            <div className="fixed z-50 inset-0 overflow-y-auto">
+              <div className="flex items-center justify-center min-h-screen">
+                <div className="bg-white p-6 rounded-lg shadow-lg w-3/4">
+                  <h2 className="text-xl font-bold mb-4">Select Vendors to Add</h2>
+                  <ul className="mb-4">
+                    {addVendorsList.map((vendor) => (
+                      <li key={vendor._id} className="flex items-center mb-2">
+                        <input
+                          type="checkbox"
+                          checked={addVendorsSelectedVendors.includes(vendor._id)}
+                          onChange={() => handleAddVendorsSelection(vendor._id)}
+                          className="mr-2"
+                        />
+                        {vendor.vendorName}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex justify-end">
+                    <button
+                      className="mr-4 bg-gray-300 hover:bg-gray-400 text-black py-2 px-4 rounded"
+                      onClick={() => setIsAddVendorsModalOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${
+                        isSending ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                      onClick={addVendorsToRFQ}
+                      disabled={isSending}
+                    >
+                      {isSending ? "Adding..." : "Add Vendors"}
                     </button>
                   </div>
                 </div>
@@ -232,7 +384,13 @@ const RFQDetailsPage = ({ userRole }) => {
       {/* Status Message */}
       {statusMessage && (
         <div className="mt-6 text-center">
-          <p className={`text-lg ${statusMessage.includes("Error") ? "text-red-600 font-bold" : "text-green-800 font-bold"}`}>
+          <p
+            className={`text-lg ${
+              statusMessage.includes("Error")
+                ? "text-red-600 font-bold"
+                : "text-green-800 font-bold"
+            }`}
+          >
             {statusMessage}
           </p>
         </div>
