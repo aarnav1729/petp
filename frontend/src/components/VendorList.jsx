@@ -114,14 +114,14 @@ const VendorList = () => {
       <div className="flex justify-end mb-4">
         <button
           onClick={() => setShowVendorForm(!showVendorForm)}
-          className="bg-green-500 text-white px-4 py-2 rounded"
+          className="bg-indigo-500 hover:bg-green-500 text-white px-4 py-2 rounded"
         >
           {showVendorForm ? "Cancel" : "New +"}
         </button>
       </div>
       {/* Vendor Form */}
       {showVendorForm && (
-        <form onSubmit={addVendor} className="mb-4">
+        <form onSubmit={addVendor} className="bg-gradient-to-r from-green-500 to-blue-500 p-6 rounded-lg shadow-md mb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
               type="text"
@@ -134,7 +134,7 @@ const VendorList = () => {
                 })
               }
               required
-              className="p-2 border border-gray-300 rounded"
+              className="p-2 border border-black rounded text-white bg-gray-700 hover:bg-white hover:text-black"
             />
             <input
               type="password"
@@ -147,7 +147,7 @@ const VendorList = () => {
                 })
               }
               required
-              className="p-2 border border-gray-300 rounded"
+              className="p-2 border border-black rounded text-white bg-gray-700 hover:bg-white hover:text-black"
             />
             <input
               type="email"
@@ -157,7 +157,7 @@ const VendorList = () => {
                 setVendorFormData({ ...vendorFormData, email: e.target.value })
               }
               required
-              className="p-2 border border-gray-300 rounded"
+              className="p-2 border border-black rounded text-white bg-gray-700 hover:bg-white hover:text-black"
             />
             <input
               type="text"
@@ -170,63 +170,65 @@ const VendorList = () => {
                 })
               }
               required
-              className="p-2 border border-gray-300 rounded"
+              className="p-2 border border-black rounded text-white bg-gray-700 hover:bg-white hover:text-black"
             />
           </div>
+          {vendorError && <p className="text-red-500">{vendorError}</p>}
           <div className="flex justify-end mt-4">
             <button
               type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded"
+              className="bg-white text-black px-4 py-2 rounded font-bold border-black hover:bg-black hover:text-white"
             >
               Add Vendor
             </button>
           </div>
-          {vendorError && <p className="text-red-500">{vendorError}</p>}
         </form>
         
       )}
       {/* Vendors Table */}
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-green-600">
-          <tr>
-            <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
-              Username
-            </th>
-            <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
-              Email
-            </th>
-            <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
-              Contact Number
-            </th>
-            <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-black">
-          {vendors.map((vendor) => (
-            <tr key={vendor._id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                {vendor.username}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                {vendor.email}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                {vendor.contactNumber}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                <button
-                  onClick={() => deleteVendor(vendor._id)}
-                  className="text-red-600 hover:text-red-900"
-                >
-                  Delete
-                </button>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-green-600">
+            <tr>
+              <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
+                Username
+              </th>
+              <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
+                Contact Number
+              </th>
+              <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-black">
+            {vendors.map((vendor) => (
+              <tr key={vendor._id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                  {vendor.username}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                  {vendor.email}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                  {vendor.contactNumber}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                  <button
+                    onClick={() => deleteVendor(vendor._id)}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* Factory Users Table */}
       <h2 className="text-2xl font-bold text-center my-6">Factory Users</h2>
@@ -234,14 +236,14 @@ const VendorList = () => {
       <div className="flex justify-end mb-4">
         <button
           onClick={() => setShowFactoryForm(!showFactoryForm)}
-          className="bg-green-500 text-white px-4 py-2 rounded"
+          className="bg-indigo-500 hover:bg-green-500 text-white px-4 py-2 rounded"
         >
           {showFactoryForm ? "Cancel" : "New +"}
         </button>
       </div>
       {/* Factory User Form */}
       {showFactoryForm && (
-        <form onSubmit={addFactoryUser} className="mb-4">
+        <form onSubmit={addFactoryUser} className="bg-gradient-to-r from-green-500 to-blue-500 p-6 rounded-lg shadow-md mb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
               type="text"
@@ -254,7 +256,7 @@ const VendorList = () => {
                 })
               }
               required
-              className="p-2 border border-gray-300 rounded"
+              className="p-2 border border-black rounded text-white bg-gray-700 hover:bg-white hover:text-black"
             />
             <input
               type="password"
@@ -267,7 +269,7 @@ const VendorList = () => {
                 })
               }
               required
-              className="p-2 border border-gray-300 rounded"
+              className="p-2 border border-black rounded text-white bg-gray-700 hover:bg-white hover:text-black"
             />
             <input
               type="email"
@@ -280,7 +282,7 @@ const VendorList = () => {
                 })
               }
               required
-              className="p-2 border border-gray-300 rounded"
+              className="p-2 border border-black rounded text-white bg-gray-700 hover:bg-white hover:text-black"
             />
             <input
               type="text"
@@ -293,62 +295,64 @@ const VendorList = () => {
                 })
               }
               required
-              className="p-2 border border-gray-300 rounded"
+              className="p-2 border border-black rounded text-white bg-gray-700 hover:bg-white hover:text-black"
             />
           </div>
+          {factoryError && <p className="text-red-500">{factoryError}</p>}
           <div className="flex justify-end mt-4">
             <button
               type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded"
+              className="bg-white text-black px-4 py-2 rounded font-bold border-black hover:bg-black hover:text-white"
             >
               Add Factory User
             </button>
           </div>
-          {factoryError && <p className="text-red-500">{factoryError}</p>}
         </form>
       )}
       {/* Factory Users Table */}
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-green-600">
-          <tr>
-            <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
-              Username
-            </th>
-            <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
-              Email
-            </th>
-            <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
-              Contact Number
-            </th>
-            <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-black">
-          {factoryUsers.map((user) => (
-            <tr key={user._id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                {user.username}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                {user.email}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                {user.contactNumber}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                <button
-                  onClick={() => deleteFactoryUser(user._id)}
-                  className="text-red-600 hover:text-red-900"
-                >
-                  Delete
-                </button>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-green-600">
+            <tr>
+              <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
+                Username
+              </th>
+              <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
+                Contact Number
+              </th>
+              <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-black">
+            {factoryUsers.map((user) => (
+              <tr key={user._id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                  {user.username}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                  {user.email}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                  {user.contactNumber}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                  <button
+                    onClick={() => deleteFactoryUser(user._id)}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

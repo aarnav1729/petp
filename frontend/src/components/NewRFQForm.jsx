@@ -34,34 +34,744 @@ const NewRFQForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const stateToDistricts = {
-    "Andhra Pradesh": ["Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", "Nellore", "Prakasam", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "YSR Kadapa"],
-    "Arunachal Pradesh": ["Anjaw", "Changlang", "Dibang Valley", "East Kameng", "East Siang", "Kamle", "Kra Daadi", "Kurung Kumey", "Lepa Rada", "Lohit", "Longding", "Lower Dibang Valley", "Lower Siang", "Lower Subansiri", "Namsai", "Pakke Kessang", "Papum Pare", "Shi Yomi", "Siang", "Tawang", "Tirap", "Upper Siang", "Upper Subansiri", "West Kameng", "West Siang"],
-    "Assam": ["Baksa", "Barpeta", "Biswanath", "Bongaigaon", "Cachar", "Charaideo", "Chirang", "Darrang", "Dhemaji", "Dhubri", "Dibrugarh", "Dima Hasao", "Goalpara", "Golaghat", "Hailakandi", "Hojai", "Jorhat", "Kamrup Metropolitan", "Kamrup", "Karbi Anglong", "Karimganj", "Kokrajhar", "Lakhimpur", "Majuli", "Morigaon", "Nagaon", "Nalbari", "Sivasagar", "Sonitpur", "South Salmara-Mankachar", "Tinsukia", "Udalguri", "West Karbi Anglong"],
-    "Bihar": ["Araria", "Arwal", "Aurangabad", "Banka", "Begusarai", "Bhagalpur", "Bhojpur", "Buxar", "Darbhanga", "East Champaran (Motihari)", "Gaya", "Gopalganj", "Jamui", "Jehanabad", "Kaimur (Bhabua)", "Katihar", "Khagaria", "Kishanganj", "Lakhisarai", "Madhepura", "Madhubani", "Munger (Monghyr)", "Muzaffarpur", "Nalanda", "Nawada", "Patna", "Purnia (Purnea)", "Rohtas", "Saharsa", "Samastipur", "Saran", "Sheikhpura", "Sheohar", "Sitamarhi", "Siwan", "Supaul", "Vaishali", "West Champaran"],
-    "Chhattisgarh": ["Balod", "Baloda Bazar", "Balrampur", "Bastar", "Bemetara", "Bijapur", "Bilaspur", "Dantewada (South Bastar)", "Dhamtari", "Durg", "Gariyaband", "Gaurela Pendra Marwahi", "Janjgir-Champa", "Jashpur", "Kabirdham (Kawardha)", "Kanker (North Bastar)", "Kondagaon", "Korba", "Koriya", "Mahasamund", "Mungeli", "Narayanpur", "Raigarh", "Raipur", "Rajnandgaon", "Sukma", "Surajpur", "Surguja"],
-    "Goa": ["North Goa", "South Goa"],
-    "Gujarat": ["Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha (Palanpur)", "Bharuch", "Bhavnagar", "Botad", "Chhota Udaipur", "Dahod", "Dang (Ahwa)", "Devbhoomi Dwarka", "Gandhinagar", "Gir Somnath", "Jamnagar", "Junagadh", "Kheda (Nadiad)", "Kutch", "Mahisagar", "Mehsana", "Morbi", "Narmada (Rajpipla)", "Navsari", "Panchmahal (Godhra)", "Patan", "Porbandar", "Rajkot", "Sabarkantha (Himmatnagar)", "Surat", "Surendranagar", "Tapi (Vyara)", "Vadodara", "Valsad"],
-    "Haryana": ["Ambala", "Bhiwani", "Charkhi Dadri", "Faridabad", "Fatehabad", "Gurugram", "Hisar", "Jhajjar", "Jind", "Kaithal", "Karnal", "Kurukshetra", "Mahendragarh", "Nuh", "Palwal", "Panchkula", "Panipat", "Rewari", "Rohtak", "Sirsa", "Sonipat", "Yamunanagar"],
-    "Himachal Pradesh": ["Bilaspur", "Chamba", "Hamirpur", "Kangra", "Kinnaur", "Kullu", "Lahaul & Spiti", "Mandi", "Shimla", "Sirmaur (Sirmour)", "Solan", "Una"],
-    "Jharkhand": ["Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum", "Garhwa", "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara", "Khunti", "Koderma", "Latehar", "Lohardaga", "Pakur", "Palamu", "Ramgarh", "Ranchi", "Sahebganj", "Seraikela-Kharsawan", "Simdega", "West Singhbhum"],
-    "Karnataka": ["Bagalkot", "Ballari (Bellary)", "Belagavi (Belgaum)", "Bengaluru (Bangalore) Rural", "Bengaluru (Bangalore) Urban", "Bidar", "Chamarajanagar", "Chikballapur", "Chikkamagaluru (Chikmagalur)", "Chitradurga", "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi (Gulbarga)", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru (Mysore)", "Raichur", "Ramanagara", "Shivamogga (Shimoga)", "Tumakuru (Tumkur)", "Udupi", "Uttara Kannada (Karwar)", "Vijayapura (Bijapur)", "Yadgir"],
-    "Kerala": ["Alappuzha", "Ernakulam", "Idukki", "Kannur", "Kasaragod", "Kollam", "Kottayam", "Kozhikode", "Malappuram", "Palakkad", "Pathanamthitta", "Thiruvananthapuram", "Thrissur", "Wayanad"],
-    "Madhya Pradesh": ["Agar Malwa", "Alirajpur", "Anuppur", "Ashoknagar", "Balaghat", "Barwani", "Betul", "Bhind", "Bhopal", "Burhanpur", "Chhatarpur", "Chhindwara", "Damoh", "Datia", "Dewas", "Dhar", "Dindori", "Guna", "Gwalior", "Harda", "Hoshangabad", "Indore", "Jabalpur", "Jhabua", "Katni", "Khandwa", "Khargone", "Mandla", "Mandsaur", "Morena", "Narsinghpur", "Neemuch", "Panna", "Raisen", "Rajgarh", "Ratlam", "Rewa", "Sagar", "Satna", "Sehore", "Seoni", "Shahdol", "Shajapur", "Sheopur", "Shivpuri", "Sidhi", "Singrauli", "Tikamgarh", "Ujjain", "Umaria", "Vidisha"],
-    "Maharashtra": ["Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana", "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna", "Kolhapur", "Latur", "Mumbai City", "Mumbai Suburban", "Nagpur", "Nanded", "Nandurbar", "Nashik", "Osmanabad", "Palghar", "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"],
-    "Manipur": ["Bishnupur", "Chandel", "Churachandpur", "Imphal East", "Imphal West", "Jiribam", "Kakching", "Kamjong", "Kangpokpi", "Noney", "Pherzawl", "Senapati", "Tamenglong", "Tengnoupal", "Thoubal", "Ukhrul"],
-    "Meghalaya": ["East Garo Hills", "East Jaintia Hills", "East Khasi Hills", "North Garo Hills", "Ri Bhoi", "South Garo Hills", "South West Garo Hills", "South West Khasi Hills", "West Garo Hills", "West Jaintia Hills", "West Khasi Hills"],
-    "Mizoram": ["Aizawl", "Champhai", "Hnahthial", "Khawzawl", "Kolasib", "Lawngtlai", "Lunglei", "Mamit", "Saiha", "Saitual", "Serchhip"],
-    "Nagaland": ["Chumukedima", "Dimapur", "Kiphire", "Kohima", "Longleng", "Mokokchung", "Mon", "Noklak", "Peren", "Phek", "Tuensang", "Wokha", "Zunheboto"],
-    "Odisha": ["Angul", "Balangir", "Balasore (Baleswar)", "Bargarh (Baragarh)", "Bhadrak", "Boudh (Bauda)", "Cuttack", "Debagarh (Deogarh)", "Dhenkanal", "Gajapati", "Ganjam", "Jagatsinghapur", "Jajpur", "Jharsuguda", "Kalahandi", "Kandhamal", "Kendrapara", "Kendujhar (Keonjhar)", "Khordha", "Koraput", "Malkangiri", "Mayurbhanj", "Nabarangpur", "Nayagarh", "Nuapada", "Puri", "Rayagada", "Sambalpur", "Sonepur", "Sundargarh"],
-    "Punjab": ["Amritsar", "Barnala", "Bathinda", "Faridkot", "Fatehgarh Sahib", "Fazilka", "Ferozepur", "Gurdaspur", "Hoshiarpur", "Jalandhar", "Kapurthala", "Ludhiana", "Mansa", "Moga", "Mohali (SAS Nagar)", "Muktsar", "Pathankot", "Patiala", "Rupnagar", "Sangrur", "Shaheed Bhagat Singh Nagar (Nawanshahr)", "Tarn Taran"],
-    "Rajasthan": ["Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara", "Bikaner", "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur", "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu", "Jodhpur", "Karauli", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand", "Sawai Madhopur", "Sikar", "Sirohi", "Sri Ganganagar", "Tonk", "Udaipur"],
-    "Sikkim": ["East Sikkim", "North Sikkim", "South Sikkim", "West Sikkim"],
-    "Tamil Nadu": ["Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kancheepuram", "Karur", "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "Theni", "Thiruchirappalli", "Thirupathur", "Thiruvarur", "Thoothukudi", "Tirunelveli", "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Vellore", "Viluppuram", "Virudhunagar"],
-    "Telangana": ["Adilabad", "Bhadradri Kothagudem", "Hyderabad", "Jagtial", "Jangaon", "Jayashankar Bhupalpally", "Jogulamba Gadwal", "Kamareddy", "Karimnagar", "Khammam", "Komaram Bheem Asifabad", "Mahabubabad", "Mahabubnagar", "Mancherial", "Medak", "Medchal–Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda", "Narayanpet", "Nirmal", "Nizamabad", "Peddapalli", "Rajanna Sircilla", "Ranga Reddy", "Sangareddy", "Siddipet", "Suryapet", "Vikarabad", "Wanaparthy", "Warangal Rural", "Warangal Urban", "Yadadri Bhuvanagiri"],
-    "Tripura": ["Dhalai", "Gomati", "Khowai", "North Tripura", "Sepahijala", "South Tripura", "Unakoti", "West Tripura"],
-    "Uttar Pradesh": ["Agra", "Aligarh", "Ambedkar Nagar", "Amethi (Chatrapati Sahuji Mahraj Nagar)", "Amroha (J.P. Nagar)", "Auraiya", "Ayodhya (Faizabad)", "Azamgarh", "Baghpat", "Bahraich", "Ballia", "Balrampur", "Banda", "Barabanki", "Bareilly", "Basti", "Bhadohi", "Bijnor", "Budaun", "Bulandshahr", "Chandauli", "Chitrakoot", "Deoria", "Etah", "Etawah", "Farrukhabad", "Fatehpur", "Firozabad", "Gautam Buddha Nagar", "Ghaziabad", "Ghazipur", "Gonda", "Gorakhpur", "Hamirpur", "Hapur (Panchsheel Nagar)", "Hardoi", "Hathras", "Jalaun", "Jaunpur", "Jhansi", "Kannauj", "Kanpur Dehat", "Kanpur Nagar", "Kasganj (Kanshiram Nagar)", "Kaushambi", "Kushinagar (Padrauna)", "Lakhimpur - Kheri", "Lalitpur", "Lucknow", "Maharajganj", "Mahoba", "Mainpuri", "Mathura", "Mau", "Meerut", "Mirzapur", "Moradabad", "Muzaffarnagar", "Pilibhit", "Pratapgarh", "Prayagraj (Allahabad)", "Raebareli", "Rampur", "Saharanpur", "Sambhal (Bhim Nagar)", "Sant Kabir Nagar", "Shahjahanpur", "Shamli", "Shrawasti", "Siddharth Nagar", "Sitapur", "Sonbhadra", "Sultanpur", "Unnao", "Varanasi"],
-    "Uttarakhand": ["Almora", "Bageshwar", "Chamoli", "Champawat", "Dehradun", "Haridwar", "Nainital", "Pauri Garhwal", "Pithoragarh", "Rudraprayag", "Tehri Garhwal", "Udham Singh Nagar", "Uttarkashi"],
-    "West Bengal": ["Alipurduar", "Bankura", "Birbhum", "Cooch Behar", "Dakshin Dinajpur (South Dinajpur)", "Darjeeling", "Hooghly", "Howrah", "Jalpaiguri", "Jhargram", "Kalimpong", "Kolkata", "Malda", "Murshidabad", "Nadia", "North 24 Parganas", "Paschim Bardhaman (West Bardhaman)", "Paschim Medinipur (West Medinipur)", "Purba Bardhaman (East Bardhaman)", "Purba Medinipur (East Medinipur)", "Purulia", "South 24 Parganas", "Uttar Dinajpur (North Dinajpur)"]
+    "Andhra Pradesh": [
+      "Anantapur",
+      "Chittoor",
+      "East Godavari",
+      "Guntur",
+      "Krishna",
+      "Kurnool",
+      "Nellore",
+      "Prakasam",
+      "Srikakulam",
+      "Visakhapatnam",
+      "Vizianagaram",
+      "West Godavari",
+      "YSR Kadapa",
+    ],
+    "Arunachal Pradesh": [
+      "Anjaw",
+      "Changlang",
+      "Dibang Valley",
+      "East Kameng",
+      "East Siang",
+      "Kamle",
+      "Kra Daadi",
+      "Kurung Kumey",
+      "Lepa Rada",
+      "Lohit",
+      "Longding",
+      "Lower Dibang Valley",
+      "Lower Siang",
+      "Lower Subansiri",
+      "Namsai",
+      "Pakke Kessang",
+      "Papum Pare",
+      "Shi Yomi",
+      "Siang",
+      "Tawang",
+      "Tirap",
+      "Upper Siang",
+      "Upper Subansiri",
+      "West Kameng",
+      "West Siang",
+    ],
+    Assam: [
+      "Baksa",
+      "Barpeta",
+      "Biswanath",
+      "Bongaigaon",
+      "Cachar",
+      "Charaideo",
+      "Chirang",
+      "Darrang",
+      "Dhemaji",
+      "Dhubri",
+      "Dibrugarh",
+      "Dima Hasao",
+      "Goalpara",
+      "Golaghat",
+      "Hailakandi",
+      "Hojai",
+      "Jorhat",
+      "Kamrup Metropolitan",
+      "Kamrup",
+      "Karbi Anglong",
+      "Karimganj",
+      "Kokrajhar",
+      "Lakhimpur",
+      "Majuli",
+      "Morigaon",
+      "Nagaon",
+      "Nalbari",
+      "Sivasagar",
+      "Sonitpur",
+      "South Salmara-Mankachar",
+      "Tinsukia",
+      "Udalguri",
+      "West Karbi Anglong",
+    ],
+    Bihar: [
+      "Araria",
+      "Arwal",
+      "Aurangabad",
+      "Banka",
+      "Begusarai",
+      "Bhagalpur",
+      "Bhojpur",
+      "Buxar",
+      "Darbhanga",
+      "East Champaran (Motihari)",
+      "Gaya",
+      "Gopalganj",
+      "Jamui",
+      "Jehanabad",
+      "Kaimur (Bhabua)",
+      "Katihar",
+      "Khagaria",
+      "Kishanganj",
+      "Lakhisarai",
+      "Madhepura",
+      "Madhubani",
+      "Munger (Monghyr)",
+      "Muzaffarpur",
+      "Nalanda",
+      "Nawada",
+      "Patna",
+      "Purnia (Purnea)",
+      "Rohtas",
+      "Saharsa",
+      "Samastipur",
+      "Saran",
+      "Sheikhpura",
+      "Sheohar",
+      "Sitamarhi",
+      "Siwan",
+      "Supaul",
+      "Vaishali",
+      "West Champaran",
+    ],
+    Chhattisgarh: [
+      "Balod",
+      "Baloda Bazar",
+      "Balrampur",
+      "Bastar",
+      "Bemetara",
+      "Bijapur",
+      "Bilaspur",
+      "Dantewada (South Bastar)",
+      "Dhamtari",
+      "Durg",
+      "Gariyaband",
+      "Gaurela Pendra Marwahi",
+      "Janjgir-Champa",
+      "Jashpur",
+      "Kabirdham (Kawardha)",
+      "Kanker (North Bastar)",
+      "Kondagaon",
+      "Korba",
+      "Koriya",
+      "Mahasamund",
+      "Mungeli",
+      "Narayanpur",
+      "Raigarh",
+      "Raipur",
+      "Rajnandgaon",
+      "Sukma",
+      "Surajpur",
+      "Surguja",
+    ],
+    Goa: ["North Goa", "South Goa"],
+    Gujarat: [
+      "Ahmedabad",
+      "Amreli",
+      "Anand",
+      "Aravalli",
+      "Banaskantha (Palanpur)",
+      "Bharuch",
+      "Bhavnagar",
+      "Botad",
+      "Chhota Udaipur",
+      "Dahod",
+      "Dang (Ahwa)",
+      "Devbhoomi Dwarka",
+      "Gandhinagar",
+      "Gir Somnath",
+      "Jamnagar",
+      "Junagadh",
+      "Kheda (Nadiad)",
+      "Kutch",
+      "Mahisagar",
+      "Mehsana",
+      "Morbi",
+      "Narmada (Rajpipla)",
+      "Navsari",
+      "Panchmahal (Godhra)",
+      "Patan",
+      "Porbandar",
+      "Rajkot",
+      "Sabarkantha (Himmatnagar)",
+      "Surat",
+      "Surendranagar",
+      "Tapi (Vyara)",
+      "Vadodara",
+      "Valsad",
+    ],
+    Haryana: [
+      "Ambala",
+      "Bhiwani",
+      "Charkhi Dadri",
+      "Faridabad",
+      "Fatehabad",
+      "Gurugram",
+      "Hisar",
+      "Jhajjar",
+      "Jind",
+      "Kaithal",
+      "Karnal",
+      "Kurukshetra",
+      "Mahendragarh",
+      "Nuh",
+      "Palwal",
+      "Panchkula",
+      "Panipat",
+      "Rewari",
+      "Rohtak",
+      "Sirsa",
+      "Sonipat",
+      "Yamunanagar",
+    ],
+    "Himachal Pradesh": [
+      "Bilaspur",
+      "Chamba",
+      "Hamirpur",
+      "Kangra",
+      "Kinnaur",
+      "Kullu",
+      "Lahaul & Spiti",
+      "Mandi",
+      "Shimla",
+      "Sirmaur (Sirmour)",
+      "Solan",
+      "Una",
+    ],
+    Jharkhand: [
+      "Bokaro",
+      "Chatra",
+      "Deoghar",
+      "Dhanbad",
+      "Dumka",
+      "East Singhbhum",
+      "Garhwa",
+      "Giridih",
+      "Godda",
+      "Gumla",
+      "Hazaribagh",
+      "Jamtara",
+      "Khunti",
+      "Koderma",
+      "Latehar",
+      "Lohardaga",
+      "Pakur",
+      "Palamu",
+      "Ramgarh",
+      "Ranchi",
+      "Sahebganj",
+      "Seraikela-Kharsawan",
+      "Simdega",
+      "West Singhbhum",
+    ],
+    Karnataka: [
+      "Bagalkot",
+      "Ballari (Bellary)",
+      "Belagavi (Belgaum)",
+      "Bengaluru (Bangalore) Rural",
+      "Bengaluru (Bangalore) Urban",
+      "Bidar",
+      "Chamarajanagar",
+      "Chikballapur",
+      "Chikkamagaluru (Chikmagalur)",
+      "Chitradurga",
+      "Dakshina Kannada",
+      "Davanagere",
+      "Dharwad",
+      "Gadag",
+      "Hassan",
+      "Haveri",
+      "Kalaburagi (Gulbarga)",
+      "Kodagu",
+      "Kolar",
+      "Koppal",
+      "Mandya",
+      "Mysuru (Mysore)",
+      "Raichur",
+      "Ramanagara",
+      "Shivamogga (Shimoga)",
+      "Tumakuru (Tumkur)",
+      "Udupi",
+      "Uttara Kannada (Karwar)",
+      "Vijayapura (Bijapur)",
+      "Yadgir",
+    ],
+    Kerala: [
+      "Alappuzha",
+      "Ernakulam",
+      "Idukki",
+      "Kannur",
+      "Kasaragod",
+      "Kollam",
+      "Kottayam",
+      "Kozhikode",
+      "Malappuram",
+      "Palakkad",
+      "Pathanamthitta",
+      "Thiruvananthapuram",
+      "Thrissur",
+      "Wayanad",
+    ],
+    "Madhya Pradesh": [
+      "Agar Malwa",
+      "Alirajpur",
+      "Anuppur",
+      "Ashoknagar",
+      "Balaghat",
+      "Barwani",
+      "Betul",
+      "Bhind",
+      "Bhopal",
+      "Burhanpur",
+      "Chhatarpur",
+      "Chhindwara",
+      "Damoh",
+      "Datia",
+      "Dewas",
+      "Dhar",
+      "Dindori",
+      "Guna",
+      "Gwalior",
+      "Harda",
+      "Hoshangabad",
+      "Indore",
+      "Jabalpur",
+      "Jhabua",
+      "Katni",
+      "Khandwa",
+      "Khargone",
+      "Mandla",
+      "Mandsaur",
+      "Morena",
+      "Narsinghpur",
+      "Neemuch",
+      "Panna",
+      "Raisen",
+      "Rajgarh",
+      "Ratlam",
+      "Rewa",
+      "Sagar",
+      "Satna",
+      "Sehore",
+      "Seoni",
+      "Shahdol",
+      "Shajapur",
+      "Sheopur",
+      "Shivpuri",
+      "Sidhi",
+      "Singrauli",
+      "Tikamgarh",
+      "Ujjain",
+      "Umaria",
+      "Vidisha",
+    ],
+    Maharashtra: [
+      "Ahmednagar",
+      "Akola",
+      "Amravati",
+      "Aurangabad",
+      "Beed",
+      "Bhandara",
+      "Buldhana",
+      "Chandrapur",
+      "Dhule",
+      "Gadchiroli",
+      "Gondia",
+      "Hingoli",
+      "Jalgaon",
+      "Jalna",
+      "Kolhapur",
+      "Latur",
+      "Mumbai City",
+      "Mumbai Suburban",
+      "Nagpur",
+      "Nanded",
+      "Nandurbar",
+      "Nashik",
+      "Osmanabad",
+      "Palghar",
+      "Parbhani",
+      "Pune",
+      "Raigad",
+      "Ratnagiri",
+      "Sangli",
+      "Satara",
+      "Sindhudurg",
+      "Solapur",
+      "Thane",
+      "Wardha",
+      "Washim",
+      "Yavatmal",
+    ],
+    Manipur: [
+      "Bishnupur",
+      "Chandel",
+      "Churachandpur",
+      "Imphal East",
+      "Imphal West",
+      "Jiribam",
+      "Kakching",
+      "Kamjong",
+      "Kangpokpi",
+      "Noney",
+      "Pherzawl",
+      "Senapati",
+      "Tamenglong",
+      "Tengnoupal",
+      "Thoubal",
+      "Ukhrul",
+    ],
+    Meghalaya: [
+      "East Garo Hills",
+      "East Jaintia Hills",
+      "East Khasi Hills",
+      "North Garo Hills",
+      "Ri Bhoi",
+      "South Garo Hills",
+      "South West Garo Hills",
+      "South West Khasi Hills",
+      "West Garo Hills",
+      "West Jaintia Hills",
+      "West Khasi Hills",
+    ],
+    Mizoram: [
+      "Aizawl",
+      "Champhai",
+      "Hnahthial",
+      "Khawzawl",
+      "Kolasib",
+      "Lawngtlai",
+      "Lunglei",
+      "Mamit",
+      "Saiha",
+      "Saitual",
+      "Serchhip",
+    ],
+    Nagaland: [
+      "Chumukedima",
+      "Dimapur",
+      "Kiphire",
+      "Kohima",
+      "Longleng",
+      "Mokokchung",
+      "Mon",
+      "Noklak",
+      "Peren",
+      "Phek",
+      "Tuensang",
+      "Wokha",
+      "Zunheboto",
+    ],
+    Odisha: [
+      "Angul",
+      "Balangir",
+      "Balasore (Baleswar)",
+      "Bargarh (Baragarh)",
+      "Bhadrak",
+      "Boudh (Bauda)",
+      "Cuttack",
+      "Debagarh (Deogarh)",
+      "Dhenkanal",
+      "Gajapati",
+      "Ganjam",
+      "Jagatsinghapur",
+      "Jajpur",
+      "Jharsuguda",
+      "Kalahandi",
+      "Kandhamal",
+      "Kendrapara",
+      "Kendujhar (Keonjhar)",
+      "Khordha",
+      "Koraput",
+      "Malkangiri",
+      "Mayurbhanj",
+      "Nabarangpur",
+      "Nayagarh",
+      "Nuapada",
+      "Puri",
+      "Rayagada",
+      "Sambalpur",
+      "Sonepur",
+      "Sundargarh",
+    ],
+    Punjab: [
+      "Amritsar",
+      "Barnala",
+      "Bathinda",
+      "Faridkot",
+      "Fatehgarh Sahib",
+      "Fazilka",
+      "Ferozepur",
+      "Gurdaspur",
+      "Hoshiarpur",
+      "Jalandhar",
+      "Kapurthala",
+      "Ludhiana",
+      "Mansa",
+      "Moga",
+      "Mohali (SAS Nagar)",
+      "Muktsar",
+      "Pathankot",
+      "Patiala",
+      "Rupnagar",
+      "Sangrur",
+      "Shaheed Bhagat Singh Nagar (Nawanshahr)",
+      "Tarn Taran",
+    ],
+    Rajasthan: [
+      "Ajmer",
+      "Alwar",
+      "Banswara",
+      "Baran",
+      "Barmer",
+      "Bharatpur",
+      "Bhilwara",
+      "Bikaner",
+      "Bundi",
+      "Chittorgarh",
+      "Churu",
+      "Dausa",
+      "Dholpur",
+      "Dungarpur",
+      "Hanumangarh",
+      "Jaipur",
+      "Jaisalmer",
+      "Jalore",
+      "Jhalawar",
+      "Jhunjhunu",
+      "Jodhpur",
+      "Karauli",
+      "Kota",
+      "Nagaur",
+      "Pali",
+      "Pratapgarh",
+      "Rajsamand",
+      "Sawai Madhopur",
+      "Sikar",
+      "Sirohi",
+      "Sri Ganganagar",
+      "Tonk",
+      "Udaipur",
+    ],
+    Sikkim: ["East Sikkim", "North Sikkim", "South Sikkim", "West Sikkim"],
+    "Tamil Nadu": [
+      "Ariyalur",
+      "Chengalpattu",
+      "Chennai",
+      "Coimbatore",
+      "Cuddalore",
+      "Dharmapuri",
+      "Dindigul",
+      "Erode",
+      "Kallakurichi",
+      "Kancheepuram",
+      "Karur",
+      "Krishnagiri",
+      "Madurai",
+      "Mayiladuthurai",
+      "Nagapattinam",
+      "Namakkal",
+      "Nilgiris",
+      "Perambalur",
+      "Pudukkottai",
+      "Ramanathapuram",
+      "Ranipet",
+      "Salem",
+      "Sivaganga",
+      "Tenkasi",
+      "Thanjavur",
+      "Theni",
+      "Thiruchirappalli",
+      "Thirupathur",
+      "Thiruvarur",
+      "Thoothukudi",
+      "Tirunelveli",
+      "Tiruppur",
+      "Tiruvallur",
+      "Tiruvannamalai",
+      "Vellore",
+      "Viluppuram",
+      "Virudhunagar",
+    ],
+    Telangana: [
+      "Adilabad",
+      "Bhadradri Kothagudem",
+      "Hyderabad",
+      "Jagtial",
+      "Jangaon",
+      "Jayashankar Bhupalpally",
+      "Jogulamba Gadwal",
+      "Kamareddy",
+      "Karimnagar",
+      "Khammam",
+      "Komaram Bheem Asifabad",
+      "Mahabubabad",
+      "Mahabubnagar",
+      "Mancherial",
+      "Medak",
+      "Medchal–Malkajgiri",
+      "Mulugu",
+      "Nagarkurnool",
+      "Nalgonda",
+      "Narayanpet",
+      "Nirmal",
+      "Nizamabad",
+      "Peddapalli",
+      "Rajanna Sircilla",
+      "Ranga Reddy",
+      "Sangareddy",
+      "Siddipet",
+      "Suryapet",
+      "Vikarabad",
+      "Wanaparthy",
+      "Warangal Rural",
+      "Warangal Urban",
+      "Yadadri Bhuvanagiri",
+    ],
+    Tripura: [
+      "Dhalai",
+      "Gomati",
+      "Khowai",
+      "North Tripura",
+      "Sepahijala",
+      "South Tripura",
+      "Unakoti",
+      "West Tripura",
+    ],
+    "Uttar Pradesh": [
+      "Agra",
+      "Aligarh",
+      "Ambedkar Nagar",
+      "Amethi (Chatrapati Sahuji Mahraj Nagar)",
+      "Amroha (J.P. Nagar)",
+      "Auraiya",
+      "Ayodhya (Faizabad)",
+      "Azamgarh",
+      "Baghpat",
+      "Bahraich",
+      "Ballia",
+      "Balrampur",
+      "Banda",
+      "Barabanki",
+      "Bareilly",
+      "Basti",
+      "Bhadohi",
+      "Bijnor",
+      "Budaun",
+      "Bulandshahr",
+      "Chandauli",
+      "Chitrakoot",
+      "Deoria",
+      "Etah",
+      "Etawah",
+      "Farrukhabad",
+      "Fatehpur",
+      "Firozabad",
+      "Gautam Buddha Nagar",
+      "Ghaziabad",
+      "Ghazipur",
+      "Gonda",
+      "Gorakhpur",
+      "Hamirpur",
+      "Hapur (Panchsheel Nagar)",
+      "Hardoi",
+      "Hathras",
+      "Jalaun",
+      "Jaunpur",
+      "Jhansi",
+      "Kannauj",
+      "Kanpur Dehat",
+      "Kanpur Nagar",
+      "Kasganj (Kanshiram Nagar)",
+      "Kaushambi",
+      "Kushinagar (Padrauna)",
+      "Lakhimpur - Kheri",
+      "Lalitpur",
+      "Lucknow",
+      "Maharajganj",
+      "Mahoba",
+      "Mainpuri",
+      "Mathura",
+      "Mau",
+      "Meerut",
+      "Mirzapur",
+      "Moradabad",
+      "Muzaffarnagar",
+      "Pilibhit",
+      "Pratapgarh",
+      "Prayagraj (Allahabad)",
+      "Raebareli",
+      "Rampur",
+      "Saharanpur",
+      "Sambhal (Bhim Nagar)",
+      "Sant Kabir Nagar",
+      "Shahjahanpur",
+      "Shamli",
+      "Shrawasti",
+      "Siddharth Nagar",
+      "Sitapur",
+      "Sonbhadra",
+      "Sultanpur",
+      "Unnao",
+      "Varanasi",
+    ],
+    Uttarakhand: [
+      "Almora",
+      "Bageshwar",
+      "Chamoli",
+      "Champawat",
+      "Dehradun",
+      "Haridwar",
+      "Nainital",
+      "Pauri Garhwal",
+      "Pithoragarh",
+      "Rudraprayag",
+      "Tehri Garhwal",
+      "Udham Singh Nagar",
+      "Uttarkashi",
+    ],
+    "West Bengal": [
+      "Alipurduar",
+      "Bankura",
+      "Birbhum",
+      "Cooch Behar",
+      "Dakshin Dinajpur (South Dinajpur)",
+      "Darjeeling",
+      "Hooghly",
+      "Howrah",
+      "Jalpaiguri",
+      "Jhargram",
+      "Kalimpong",
+      "Kolkata",
+      "Malda",
+      "Murshidabad",
+      "Nadia",
+      "North 24 Parganas",
+      "Paschim Bardhaman (West Bardhaman)",
+      "Paschim Medinipur (West Medinipur)",
+      "Purba Bardhaman (East Bardhaman)",
+      "Purba Medinipur (East Medinipur)",
+      "Purulia",
+      "South 24 Parganas",
+      "Uttar Dinajpur (North Dinajpur)",
+    ],
   };
 
   useEffect(() => {
@@ -72,7 +782,9 @@ const NewRFQForm = () => {
   const fetchNextRFQNumber = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get("https://petp.onrender.com/api/next-rfq-number");
+      const response = await axios.get(
+        "https://petp.onrender.com/api/next-rfq-number"
+      );
       setFormData((prevData) => ({
         ...prevData,
         RFQNumber: response.data.RFQNumber,
@@ -105,17 +817,41 @@ const NewRFQForm = () => {
     });
   };
 
+  const handleSelectAllVendors = (e) => {
+    const isChecked = e.target.checked;
+    if (isChecked) {
+      // Select all vendors
+      const allVendorIds = vendors.map((vendor) => vendor._id);
+      setSelectedVendors(allVendorIds);
+    } else {
+      // Deselect all vendors
+      setSelectedVendors([]);
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
     if (name === "dropLocationState") {
-      setFormData((prevData) => ({ ...prevData, dropLocationState: value, dropLocationDistrict: "" }));
+      setFormData((prevData) => ({
+        ...prevData,
+        dropLocationState: value,
+        dropLocationDistrict: "",
+      }));
       setDistrictOptions(stateToDistricts[value] || []);
       return;
     }
 
     let error = "";
-    if (["RFQNumber", "weight", "budgetedPriceBySalesDept", "maxAllowablePrice", "numberOfVehicles"].includes(name)) {
+    if (
+      [
+        "RFQNumber",
+        "weight",
+        "budgetedPriceBySalesDept",
+        "maxAllowablePrice",
+        "numberOfVehicles",
+      ].includes(name)
+    ) {
       if (!/^\d*$/.test(value)) {
         error = "This field must be a number.";
       }
@@ -136,9 +872,11 @@ const NewRFQForm = () => {
     }
 
     setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
-    setFormData((prevData) => ({ ...prevData, [name]: type === "checkbox" ? checked : value }));
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -146,13 +884,13 @@ const NewRFQForm = () => {
     if (Object.values(errors).some((error) => error)) {
       alert(
         "Please fix the following errors:\n" +
-        Object.entries(errors)
-          .filter(([_, error]) => error)
-          .map(
-            ([field, error]) =>
-              `${field.replace(/([A-Z])/g, " $1").trim()}: ${error}`
-          )
-          .join("\n")
+          Object.entries(errors)
+            .filter(([_, error]) => error)
+            .map(
+              ([field, error]) =>
+                `${field.replace(/([A-Z])/g, " $1").trim()}: ${error}`
+            )
+            .join("\n")
       );
       return;
     }
@@ -174,7 +912,10 @@ const NewRFQForm = () => {
         dataToSend
       );
 
-      if (response.status === 201 && response.data.message === "RFQ created and email sent successfully") {
+      if (
+        response.status === 201 &&
+        response.data.message === "RFQ created and email sent successfully"
+      ) {
         alert("RFQ submitted successfully!");
         setFormData({
           RFQNumber: "",
@@ -208,7 +949,11 @@ const NewRFQForm = () => {
       }
     } catch (error) {
       console.error("Error submitting RFQ:", error);
-      alert(`Failed to submit RFQ. ${error.response?.data?.message || error.message}`);
+      alert(
+        `Failed to submit RFQ. ${
+          error.response?.data?.message || error.message
+        }`
+      );
     } finally {
       setIsLoading(false);
     }
@@ -217,7 +962,10 @@ const NewRFQForm = () => {
   return (
     <div className="container mx-auto mt-8 px-4 py-6 bg-transparent text-black rounded-lg shadow-lg border border-black">
       <h2 className="text-2xl font-bold mb-6 text-center">Create New RFQ</h2>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <form
+        onSubmit={handleSubmit}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+      >
         <div className="mb-4">
           <label className="block text-xl text-black">RFQ Number</label>
           <input
@@ -232,7 +980,9 @@ const NewRFQForm = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">RFQ Type</label>
+          <label className="block text-xl font-medium text-black">
+            RFQ Type
+          </label>
           <select
             name="rfqType"
             value={formData.rfqType}
@@ -245,9 +995,10 @@ const NewRFQForm = () => {
           </select>
         </div>
 
-
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Short Name</label>
+          <label className="block text-xl font-medium text-black">
+            Short Name
+          </label>
           <input
             type="text"
             name="shortName"
@@ -256,11 +1007,15 @@ const NewRFQForm = () => {
             className="mt-1 block w-full px-3 py-2 border border-black bg-gray-200 hover:bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
-          {errors.shortName && <p className="text-red-600 font-bold mt-1">{errors.shortName}</p>}
+          {errors.shortName && (
+            <p className="text-red-600 font-bold mt-1">{errors.shortName}</p>
+          )}
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Company Type</label>
+          <label className="block text-xl font-medium text-black">
+            Company Type
+          </label>
           <input
             type="text"
             name="companyType"
@@ -269,11 +1024,15 @@ const NewRFQForm = () => {
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
-          {errors.companyType && <p className="text-red-600 font-bold mt-1">{errors.companyType}</p>}
+          {errors.companyType && (
+            <p className="text-red-600 font-bold mt-1">{errors.companyType}</p>
+          )}
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">SAP Order</label>
+          <label className="block text-xl font-medium text-black">
+            SAP Order
+          </label>
           <input
             type="text"
             name="sapOrder"
@@ -282,11 +1041,15 @@ const NewRFQForm = () => {
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
-          {errors.sapOrder && <p className="text-red-600 font-bold mt-1">{errors.sapOrder}</p>}
+          {errors.sapOrder && (
+            <p className="text-red-600 font-bold mt-1">{errors.sapOrder}</p>
+          )}
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Item Type</label>
+          <label className="block text-xl font-medium text-black">
+            Item Type
+          </label>
           <select
             name="itemType"
             value={formData.itemType}
@@ -302,7 +1065,9 @@ const NewRFQForm = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Customer Name</label>
+          <label className="block text-xl font-medium text-black">
+            Customer Name
+          </label>
           <input
             type="text"
             name="customerName"
@@ -311,11 +1076,15 @@ const NewRFQForm = () => {
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
-          {errors.customerName && <p className="text-red-600 font-bold mt-1">{errors.customerName}</p>}
+          {errors.customerName && (
+            <p className="text-red-600 font-bold mt-1">{errors.customerName}</p>
+          )}
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Origin Location</label>
+          <label className="block text-xl font-medium text-black">
+            Origin Location
+          </label>
           <input
             type="text"
             name="originLocation"
@@ -324,11 +1093,17 @@ const NewRFQForm = () => {
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
-          {errors.originLocation && <p className="text-red-600 font-bold mt-1">{errors.originLocation}</p>}
+          {errors.originLocation && (
+            <p className="text-red-600 font-bold mt-1">
+              {errors.originLocation}
+            </p>
+          )}
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Drop Location State</label>
+          <label className="block text-xl font-medium text-black">
+            Drop Location State
+          </label>
           <select
             name="dropLocationState"
             value={formData.dropLocationState}
@@ -346,7 +1121,9 @@ const NewRFQForm = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Drop Location District</label>
+          <label className="block text-xl font-medium text-black">
+            Drop Location District
+          </label>
           <select
             name="dropLocationDistrict"
             value={formData.dropLocationDistrict}
@@ -364,7 +1141,9 @@ const NewRFQForm = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Vehicle Type</label>
+          <label className="block text-xl font-medium text-black">
+            Vehicle Type
+          </label>
           <select
             name="vehicleType"
             value={formData.vehicleType}
@@ -383,7 +1162,9 @@ const NewRFQForm = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Additional Vehicle Details</label>
+          <label className="block text-xl font-medium text-black">
+            Additional Vehicle Details
+          </label>
           <select
             name="additionalVehicleDetails"
             value={formData.additionalVehicleDetails}
@@ -405,7 +1186,9 @@ const NewRFQForm = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Number of Vehicles</label>
+          <label className="block text-xl font-medium text-black">
+            Number of Vehicles
+          </label>
           <input
             type="number"
             name="numberOfVehicles"
@@ -414,11 +1197,17 @@ const NewRFQForm = () => {
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
-          {errors.numberOfVehicles && <p className="text-red-600 font-bold mt-1">{errors.numberOfVehicles}</p>}
+          {errors.numberOfVehicles && (
+            <p className="text-red-600 font-bold mt-1">
+              {errors.numberOfVehicles}
+            </p>
+          )}
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Weight in Tons</label>
+          <label className="block text-xl font-medium text-black">
+            Weight in Tons
+          </label>
           <input
             type="text"
             name="weight"
@@ -427,11 +1216,15 @@ const NewRFQForm = () => {
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
-          {errors.weight && <p className="text-red-600 font-bold mt-1">{errors.weight}</p>}
+          {errors.weight && (
+            <p className="text-red-600 font-bold mt-1">{errors.weight}</p>
+          )}
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Budgeted Price By Sales Dept.</label>
+          <label className="block text-xl font-medium text-black">
+            Budgeted Price By Sales Dept.
+          </label>
           <input
             type="text"
             name="budgetedPriceBySalesDept"
@@ -440,11 +1233,17 @@ const NewRFQForm = () => {
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
-          {errors.budgetedPriceBySalesDept && <p className="text-red-600 font-bold mt-1">{errors.budgetedPriceBySalesDept}</p>}
+          {errors.budgetedPriceBySalesDept && (
+            <p className="text-red-600 font-bold mt-1">
+              {errors.budgetedPriceBySalesDept}
+            </p>
+          )}
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Max Allowable Price</label>
+          <label className="block text-xl font-medium text-black">
+            Max Allowable Price
+          </label>
           <input
             type="text"
             name="maxAllowablePrice"
@@ -453,11 +1252,17 @@ const NewRFQForm = () => {
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
-          {errors.maxAllowablePrice && <p className="text-red-600 font-bold mt-1">{errors.maxAllowablePrice}</p>}
+          {errors.maxAllowablePrice && (
+            <p className="text-red-600 font-bold mt-1">
+              {errors.maxAllowablePrice}
+            </p>
+          )}
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Vehicle Placement Begin Date</label>
+          <label className="block text-xl font-medium text-black">
+            Vehicle Placement Begin Date
+          </label>
           <input
             type="date"
             name="vehiclePlacementBeginDate"
@@ -469,7 +1274,9 @@ const NewRFQForm = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">Vehicle Placement End Date</label>
+          <label className="block text-xl font-medium text-black">
+            Vehicle Placement End Date
+          </label>
           <input
             type="date"
             name="vehiclePlacementEndDate"
@@ -482,7 +1289,9 @@ const NewRFQForm = () => {
 
         {/* E-Reverse Toggle Switch */}
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">E-Reverse:</label>
+          <label className="block text-xl font-medium text-black">
+            E-Reverse:
+          </label>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
@@ -500,7 +1309,9 @@ const NewRFQForm = () => {
         {formData.eReverseToggle && (
           <>
             <div className="mb-4">
-              <label className="block text-xl font-medium text-black">E-Reverse Date</label>
+              <label className="block text-xl font-medium text-black">
+                E-Reverse Date
+              </label>
               <input
                 type="date"
                 name="eReverseDate"
@@ -512,7 +1323,9 @@ const NewRFQForm = () => {
             </div>
 
             <div className="mb-4">
-              <label className="block text-xl font-medium text-black">E-Reverse Time</label>
+              <label className="block text-xl font-medium text-black">
+                E-Reverse Time
+              </label>
               <input
                 type="time"
                 name="eReverseTime"
@@ -526,7 +1339,9 @@ const NewRFQForm = () => {
         )}
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">RFQ Closing Date</label>
+          <label className="block text-xl font-medium text-black">
+            RFQ Closing Date
+          </label>
           <input
             type="date"
             name="RFQClosingDate"
@@ -538,7 +1353,9 @@ const NewRFQForm = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-xl font-medium text-black">RFQ Closing Time</label>
+          <label className="block text-xl font-medium text-black">
+            RFQ Closing Time
+          </label>
           <input
             type="time"
             name="RFQClosingTime"
@@ -550,23 +1367,64 @@ const NewRFQForm = () => {
         </div>
 
         <div className="mb-4 md:col-span-3">
-          <label className="block text-2xl text-black">Select Vendors</label>
-          <div className="mt-2">
+          <label className="text-black mb-2 font-bold items-center text-xl text-center">
+            Which vendors should be notified?
+          </label>
+          <div className="mt-2 overflow-x-auto">
             {vendors.length > 0 ? (
-              vendors.map((vendor) => (
-                <div key={vendor._id} className="flex items-center mb-2">
-                  <input
-                    type="checkbox"
-                    id={vendor._id}
-                    checked={selectedVendors.includes(vendor._id)}
-                    onChange={() => handleVendorSelection(vendor._id)}
-                    className="mr-2"
-                  />
-                  <label htmlFor={vendor._id} className="text-black text-xl font-bold bg-gray-200 rounded-lg p-1 px-2">
-                    {vendor.vendorName} ({vendor.email})
-                  </label>
-                </div>
-              ))
+              <table className="min-w-full divide-y border-black rounded-lg divide-black">
+                <thead className="bg-gray-700 text-white">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-white">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="selectAllVendors"
+                          checked={
+                            vendors.length > 0 &&
+                            selectedVendors.length === vendors.length
+                          }
+                          onChange={handleSelectAllVendors}
+                          className="form-checkbox h-4 w-4 text-indigo-600 transition duration-150 ease-in-out mr-2"
+                        />
+                        <label
+                          htmlFor="selectAllVendors"
+                          className="text-white"
+                        >
+                          Select All
+                        </label>
+                      </div>
+                    </th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-white">
+                      Vendor Name
+                    </th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-white">
+                      Email
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-black">
+                  {vendors.map((vendor) => (
+                    <tr key={vendor._id} className="hover:bg-gray-200">
+                      <td className="px-4 py-2">
+                        <input
+                          type="checkbox"
+                          id={vendor._id}
+                          checked={selectedVendors.includes(vendor._id)}
+                          onChange={() => handleVendorSelection(vendor._id)}
+                          className="form-checkbox h-4 w-4 text-indigo-600 transition duration-150 ease-in-out"
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-sm text-black">
+                        {vendor.vendorName}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-black">
+                        {vendor.email}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             ) : (
               <p>No vendors available to select.</p>
             )}
@@ -575,8 +1433,9 @@ const NewRFQForm = () => {
 
         <button
           type="submit"
-          className={`md:col-span-3 bg-indigo-600 hover:bg-indigo-900 text-white font-bold py-2 px-4 rounded ${isLoading ? "cursor-not-allowed opacity-50" : ""
-            }`}
+          className={`md:col-span-3 bg-indigo-600 hover:bg-indigo-900 text-white font-bold py-2 px-4 rounded ${
+            isLoading ? "cursor-not-allowed opacity-50" : ""
+          }`}
           disabled={isLoading}
         >
           {isLoading ? "Submitting..." : "Submit RFQ"}
