@@ -15,7 +15,7 @@ const VendorRFQList = ({ username }) => {
       const response = await axios.get("https://petp.onrender.com/api/quotes");
       // filter quotes by vendor name
       const quotesByVendor = response.data.reduce((acc, quote) => {
-        // set vendor quotes 
+        // set vendor quotes
         if (quote.vendorName === username) {
           acc[quote.rfqId] = quote;
         }
@@ -27,17 +27,20 @@ const VendorRFQList = ({ username }) => {
     }
   };
 
-  // fetch rfqs and vendor quotes from backend
-  useEffect(() => {
-    const fetchRFQs = async () => {
-      try {
-        const response = await axios.get("https://petp.onrender.com/api/rfqs");
-        setRfqs(response.data);
-      } catch (error) {
-        console.error("Error fetching RFQs:", error);
-      }
-    };
+  // fetch RFQs the vendor was invited to and their respective quotes
+  const fetchRFQs = async () => {
+    try {
+      const response = await axios.get(
+        `https://petp.onrender.com/api/rfqs/vendor/${username}`
+      );
+      setRfqs(response.data);
+    } catch (error) {
+      console.error("Error fetching RFQs for vendor:", error);
+    }
+  };
 
+  // useEffect to fetch RFQs and vendor quotes
+  useEffect(() => {
     fetchRFQs();
     fetchVendorQuotes();
   }, [username]);
@@ -54,109 +57,115 @@ const VendorRFQList = ({ username }) => {
       <h2 className="text-2xl font-bold text-center mb-6">
         RFQ List for Vendors
       </h2>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-white rounded-full">
-          <thead className="bg-green-600 rounded-full">
-            <tr>
-              {[
-                "Actions",
-                "RFQ Number",
-                "Short Name",
-                "Company Type",
-                "Item Type",
-                "Origin Location",
-                "Drop Location State",
-                "Drop Location District",
-                "Vehicle Type",
-                "Additional Vehicle Details",
-                "Number of Vehicles",
-                "Weight",
-                "Vehicle Placement Begin Date",
-                "Vehicle Placement End Date",
-                "eReverse Date",
-                "eReverse Time",
-              ].map((header) => (
-                <th
-                  key={header}
-                  className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider"
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-black">
-            {rfqs.map((rfq) => (
-              <tr
-                key={rfq._id}
-                className="cursor-pointer hover:bg-blue-200"
-              >
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {rfq.status !== "closed" ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/vendor-quote-form/${rfq._id}`);
-                      }}
-                      className="text-indigo-600 hover:text-indigo-900"
-                    >
-                      {vendorQuotes[rfq._id] ? "Update Quote" : "View & Quote"}
-                    </button>
-                  ) : (
-                    <span className="text-gray-500">Closed</span>
-                  )}
-                </td>
 
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.RFQNumber}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.shortName}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.companyType}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.itemType}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.originLocation}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.dropLocationState}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.dropLocationDistrict}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.vehicleType}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.additionalVehicleDetails}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.numberOfVehicles}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.weight}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {formatDate(rfq.vehiclePlacementBeginDate)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {formatDate(rfq.vehiclePlacementEndDate)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {formatDate(rfq.eReverseDate)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {rfq.eReverseTime}
-                </td>
+      {rfqs.length === 0 ? (
+        <p className="text-center text-black">
+          You have no RFQs at the moment.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-white rounded-full">
+            <thead className="bg-green-600 rounded-full">
+              <tr>
+                {[
+                  "Actions",
+                  "RFQ Number",
+                  "Short Name",
+                  "Company Type",
+                  "Item Type",
+                  "Origin Location",
+                  "Drop Location State",
+                  "Drop Location District",
+                  "Vehicle Type",
+                  "Additional Vehicle Details",
+                  "Number of Vehicles",
+                  "Weight",
+                  "Vehicle Placement Begin Date",
+                  "Vehicle Placement End Date",
+                  "eReverse Date",
+                  "eReverse Time",
+                ].map((header) => (
+                  <th
+                    key={header}
+                    className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider"
+                  >
+                    {header}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="bg-white divide-y divide-black">
+              {rfqs.map((rfq) => (
+                <tr key={rfq._id} className="cursor-pointer hover:bg-blue-200">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    {rfq.status !== "closed" ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/vendor-quote-form/${rfq._id}`);
+                        }}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        {vendorQuotes[rfq._id]
+                          ? "Update Quote"
+                          : "View & Quote"}
+                      </button>
+                    ) : (
+                      <span className="text-gray-500">Closed</span>
+                    )}
+                  </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.RFQNumber}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.shortName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.companyType}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.itemType}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.originLocation}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.dropLocationState}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.dropLocationDistrict}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.vehicleType}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.additionalVehicleDetails}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.numberOfVehicles}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.weight}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {formatDate(rfq.vehiclePlacementBeginDate)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {formatDate(rfq.vehiclePlacementEndDate)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {formatDate(rfq.eReverseDate)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                    {rfq.eReverseTime}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

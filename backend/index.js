@@ -513,6 +513,26 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
+// endpoint to check and return vendor specific rfqs
+app.get("/api/rfqs/vendor/:vendorName", async (req, res) => {
+  const { vendorName } = req.params;
+  try {
+    // Find the vendor's _id using vendorName
+    const vendor = await Vendor.findOne({ vendorName });
+    if (!vendor) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+
+    // Find RFQs where selectedVendors includes the vendor's _id
+    const rfqs = await RFQ.find({ selectedVendors: vendor._id });
+
+    res.status(200).json(rfqs);
+  } catch (error) {
+    console.error("Error fetching RFQs for vendor:", error);
+    res.status(500).json({ error: "Failed to fetch RFQs for vendor" });
+  }
+});
+
 // endpoint for adding a vendor from VendorList.jsx
 app.post("/api/add-vendor", async (req, res) => {
   try {
