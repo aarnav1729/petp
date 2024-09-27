@@ -517,8 +517,16 @@ app.post("/api/register", async (req, res) => {
 app.get("/api/rfqs/vendor/:vendorName", async (req, res) => {
   const { vendorName } = req.params;
   try {
-    // Directly query RFQs where selectedVendors includes vendorName
-    const rfqs = await RFQ.find({ selectedVendors: vendorName });
+    // Find the vendor's _id using vendorName
+    const vendor = await Vendor.findOne({ vendorName });
+    if (!vendor) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+
+    // Query RFQs where selectedVendors includes either vendorName or vendor._id
+    const rfqs = await RFQ.find({
+      selectedVendors: { $in: [vendorName, vendor._id.toString()] },
+    });
 
     res.status(200).json(rfqs);
   } catch (error) {
