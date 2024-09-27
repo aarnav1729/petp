@@ -33,15 +33,15 @@ const App = () => {
   return (
     <Router>
       <div className="App min-h-screen bg-gradient-to-r from-blue-500 to-green-600 flex flex-col">
-        {!role ? (
-          <Routes>
-            <Route path="/" element={<Login onLogin={handleLogin} />} />
-            <Route path="/registering" element={<Registering />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        ) : (
-          <div className="flex flex-col flex-grow">
-            <Header role={role} onLogout={handleLogout} />
+        <Header role={role} onLogout={handleLogout} />
+        <div className="flex flex-col flex-grow">
+          {!role ? (
+            <Routes>
+              <Route path="/" element={<Login onLogin={handleLogin} />} />
+              <Route path="/registering" element={<Registering />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          ) : (
             <main className="flex-grow p-4">
               <Routes>
                 <Route
@@ -52,8 +52,8 @@ const App = () => {
                         role === "admin"
                           ? "/rfq-list"
                           : role === "factory"
-                          ? "/new-rfq"
-                          : "/vendor-rfq-list"
+                            ? "/new-rfq"
+                            : "/vendor-rfq-list"
                       }
                     />
                   }
@@ -103,10 +103,9 @@ const App = () => {
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </main>
-
-            <Footer />
-          </div>
-        )}
+          )}
+          <Footer />
+        </div>
       </div>
     </Router>
   );

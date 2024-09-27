@@ -164,18 +164,18 @@ async function sendRFQEmail(rfqData, selectedVendorIds) {
             </thead>
             <tbody>
               ${Object.entries(rfqData)
-            .map(
-              ([key, value]) => `
+                .map(
+                  ([key, value]) => `
                 <tr>
                   <td style="padding: 8px; text-align: start;">${key.replace(
-                /([A-Z])/g,
-                " $1"
-              )}</td>
+                    /([A-Z])/g,
+                    " $1"
+                  )}</td>
                   <td style="padding: 8px; text-align: start;">${value}</td>
                 </tr>
               `
-            )
-            .join("")}
+                )
+                .join("")}
             </tbody>
           </table>
           <p>We look forward to receiving your quote.</p>
@@ -288,10 +288,14 @@ app.post("/api/login", async (req, res) => {
       if (user.status === "approved") {
         return res.status(200).json({ success: true, username: user.username });
       } else {
-        return res.status(403).json({ success: false, message: "Account pending admin approval" });
+        return res
+          .status(403)
+          .json({ success: false, message: "Account pending admin approval" });
       }
     } else {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid credentials" });
     }
   } catch (error) {
     console.error("Error during login:", error);
@@ -315,7 +319,11 @@ app.post("/api/approve-account/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const user = await User.findByIdAndUpdate(id, { status: "approved" }, { new: true });
+    const user = await User.findByIdAndUpdate(
+      id,
+      { status: "approved" },
+      { new: true }
+    );
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -392,7 +400,8 @@ app.get("/api/active-auctions", async (req, res) => {
       if (!rfq.eReverseToggle) return false;
       // create a moment object for the ereversedate and ereversetime
       const eReverseDateTime = moment.tz(
-        `${moment(rfq.eReverseDate).format("YYYY-MM-DD")}T${rfq.eReverseTime
+        `${moment(rfq.eReverseDate).format("YYYY-MM-DD")}T${
+          rfq.eReverseTime
         }:00`,
         "Asia/Kolkata"
       );
@@ -432,7 +441,8 @@ app.get("/api/active-auctions", async (req, res) => {
 // endpoint for vendor registration
 app.post("/api/register", async (req, res) => {
   // extract the required fields from the request body
-  const { username, password, vendorName, email, contactNumber, role } = req.body;
+  const { username, password, vendorName, email, contactNumber, role } =
+    req.body;
 
   // check if the username, password, vendorName, email, and contact number are provided
   try {
@@ -454,7 +464,7 @@ app.post("/api/register", async (req, res) => {
       text: `
         Dear ${username},
 
-        Welcome to Premier Energies! We're excited to have you onboard.
+        Welcome to LEAF by Premier Energies! We're excited to have you onboard.
 
         Here are your login credentials:
         Username: ${username}
@@ -489,12 +499,10 @@ app.post("/api/register", async (req, res) => {
     await transporter.sendMail(mailOptions);
 
     // return success response
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "User registered successfully and welcome email sent.",
-      });
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully and welcome email sent.",
+    });
   } catch (error) {
     // log error if vendor registration fails
     console.error("Error registering vendor:", error);
@@ -518,7 +526,6 @@ app.post("/api/add-vendor", async (req, res) => {
     });
 
     await newVendor.save();
-
 
     // Also create a User entry
     const newUser = new User({
@@ -546,8 +553,8 @@ app.post("/api/add-vendor", async (req, res) => {
             Username: ${username}
             Password: ${password}
     
-          Please ensure to submit all the required documents on Vendor Details page within 1 week to avoid account suspension.
-          You can now log in to our portal and start participating in bidding on RFQs.
+        Thank you for registering with us! Your account is currently pending admin approval.
+        You will be notified once your account has been approved.
     
           Best regards,
           Project Leaf Team,
@@ -610,7 +617,11 @@ app.post("/api/rfq", async (req, res) => {
       : "RFQ1";
 
     // Add the generated RFQ number to the request body
-    const newRFQData = { ...req.body, RFQNumber: nextRFQNumber, status: "open" };
+    const newRFQData = {
+      ...req.body,
+      RFQNumber: nextRFQNumber,
+      status: "open",
+    };
 
     // Create a new RFQ with the generated number
     const rfq = new RFQ(newRFQData);
@@ -625,21 +636,17 @@ app.post("/api/rfq", async (req, res) => {
     if (!emailResponse.success) {
       // If email sending fails, remove the RFQ entry to prevent incomplete processes
       await RFQ.findByIdAndDelete(rfq._id);
-      return res
-        .status(500)
-        .json({
-          message:
-            "RFQ created but failed to send emails. RFQ entry has been removed.",
-        });
+      return res.status(500).json({
+        message:
+          "RFQ created but failed to send emails. RFQ entry has been removed.",
+      });
     }
 
     // If everything is successful, return the response
-    res
-      .status(201)
-      .json({
-        message: "RFQ created and email sent successfully",
-        RFQNumber: nextRFQNumber,
-      });
+    res.status(201).json({
+      message: "RFQ created and email sent successfully",
+      RFQNumber: nextRFQNumber,
+    });
   } catch (error) {
     console.error("Error creating RFQ:", error);
     res.status(500).json({ error: "Failed to create RFQ" });
@@ -660,7 +667,14 @@ app.get("/api/rfqs", async (req, res) => {
 // endpoint for vendor to submit a quote
 app.post("/api/quote", async (req, res) => {
   try {
-    const { rfqId, quote, message, vendorName, numberOfTrucks, validityPeriod } = req.body;
+    const {
+      rfqId,
+      quote,
+      message,
+      vendorName,
+      numberOfTrucks,
+      validityPeriod,
+    } = req.body;
 
     // save quote with vendorName
     const newQuote = new Quote({
@@ -797,6 +811,96 @@ app.get("/api/quotes", async (req, res) => {
   }
 });
 
+// endpoint to fetch all factory users
+app.get("/api/factory-users", async (req, res) => {
+  try {
+    const factoryUsers = await User.find({ role: "factory" });
+    res.status(200).json(factoryUsers);
+  } catch (error) {
+    console.error("Error fetching factory users:", error);
+    res.status(500).json({ error: "Failed to fetch factory users", details: error.message });
+  }
+});
+
+// endpoint to add a new factory user from vendorlist
+app.post("/api/add-factory-user", async (req, res) => {
+  try {
+    const { username, password, email, contactNumber } = req.body;
+
+    const newUser = new User({
+      username,
+      password,
+      email,
+      contactNumber,
+      role: "factory",
+      status: "approved",
+    });
+
+    await newUser.save();
+
+    // send the welcome email (if needed)
+    const mailOptions = {
+      from: "aarnavsingh836@gmail.com",
+      to: email,
+      subject: "Welcome to Leaf",
+      text: `
+          Dear ${username},
+    
+          Welcome to LEAF by Premier Energies! We're excited to have you onboard.
+    
+          Here are your login credentials:
+            Username: ${username}
+            Password: ${password}
+    
+        Thank you for registering with us! Your account is currently pending admin approval.
+        You will be notified once your account has been approved.
+    
+          Best regards,
+          Premier Energies Team
+        `,
+    };
+
+    const accessTokenResponse = await oAuth2Client.getAccessToken();
+    const accessToken = accessTokenResponse.token;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        type: "OAuth2",
+        user: "aarnavsingh836@gmail.com",
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        refreshToken: REFRESH_TOKEN,
+        accessToken: accessToken,
+      },
+    });
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(201).json({ message: "Factory user added successfully!" });
+  } catch (error) {
+    console.error("Error adding factory user:", error.message);
+    res.status(500).json({ error: "Failed to add factory user" });
+  }
+});
+
+// endpoint to delete a factory user by id
+app.delete("/api/factory-users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndDelete(id);
+
+    if (!user) {
+      return res.status(404).json({ error: "Factory user not found" });
+    }
+
+    res.status(200).json({ message: "Factory user deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting factory user:", error);
+    res.status(500).json({ error: "Failed to delete factory user" });
+  }
+});
+
 // endpoint to fetch quotes for a specific RFQ
 app.get("/api/quotes/:rfqId", async (req, res) => {
   try {
@@ -852,7 +956,11 @@ app.patch("/api/rfq/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid RFQ ID" });
     }
 
-    const rfq = await RFQ.findByIdAndUpdate(id, { status: normalizedStatus }, { new: true });
+    const rfq = await RFQ.findByIdAndUpdate(
+      id,
+      { status: normalizedStatus },
+      { new: true }
+    );
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
     }
@@ -1009,7 +1117,10 @@ app.get("/api/closed-rfqs", async (req, res) => {
         const rfqQuotes = await Quote.find({ rfqId: rfq._id });
 
         // Assign labels and trucks based on the RFQ requirements
-        const labeledQuotes = assignQuoteLabels(rfqQuotes, rfq.numberOfVehicles);
+        const labeledQuotes = assignQuoteLabels(
+          rfqQuotes,
+          rfq.numberOfVehicles
+        );
 
         // Return the RFQ data along with labeled quotes
         return {
@@ -1120,7 +1231,7 @@ app.post("/api/send-reminder", async (req, res) => {
 // Function to check and update RFQ status based on the closing date and time
 const updateRFQStatusBasedOnClosingDate = async () => {
   try {
-    const now = moment().tz('Asia/Kolkata');
+    const now = moment().tz("Asia/Kolkata");
     const rfqs = await RFQ.find({ status: "open" });
 
     for (const rfq of rfqs) {
@@ -1130,7 +1241,9 @@ const updateRFQStatusBasedOnClosingDate = async () => {
       }
 
       const closingDateTime = moment.tz(
-        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${rfq.RFQClosingTime}:00`,
+        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${
+          rfq.RFQClosingTime
+        }:00`,
         "Asia/Kolkata"
       );
 
@@ -1215,7 +1328,8 @@ async function sendReminderEmails() {
               Dear ${labeledQuote.vendorName},
 
               Your status for RFQ ${rfq.RFQNumber} is ${labeledQuote.label}.
-              The number of trucks allotted to you is ${labeledQuote.actualTrucksAllotted
+              The number of trucks allotted to you is ${
+                labeledQuote.actualTrucksAllotted
               }.
 
               Please be ready for the e-reverse process at:

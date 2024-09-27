@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import axios from "axios";
-import Header from "./Header";
-import Footer from "./Footer";
 import { useNavigate } from "react-router-dom";
 
 const Login = ({ onLogin }) => {
@@ -63,14 +61,8 @@ const Login = ({ onLogin }) => {
     }
   };
 
-  const loginNavLinks = [
-    { to: "/terms", label: "Terms & Conditions" },
-    { to: "/contact", label: "Contact" },
-  ];
-
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-r from-blue-500 to-green-600">
-      <Header navLinks={loginNavLinks} />
 
       <div className="flex justify-center items-center flex-grow mt-20 p-10">
         <div className="p-8 bg-white rounded-lg shadow-2xl w-full max-w-md">
@@ -197,7 +189,6 @@ const Login = ({ onLogin }) => {
           </form>
         </div>
       </div>
-      <Footer />
     </div>
   )
 };
