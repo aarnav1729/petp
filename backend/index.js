@@ -514,18 +514,18 @@ app.post("/api/register", async (req, res) => {
 });
 
 // endpoint to check and return vendor specific rfqs
-app.get("/api/rfqs/vendor/:vendorName", async (req, res) => {
-  const { vendorName } = req.params;
+app.get("/api/rfqs/vendor/:username", async (req, res) => {
+  const { username } = req.params;
   try {
-    // Find the vendor's _id using vendorName
-    const vendor = await Vendor.findOne({ vendorName });
+    // Find the vendor's _id using username
+    const vendor = await Vendor.findOne({ username });
     if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });
     }
 
-    // Query RFQs where selectedVendors includes either vendorName or vendor._id
+    // Query RFQs where selectedVendors includes vendor._id
     const rfqs = await RFQ.find({
-      selectedVendors: { $in: [vendorName, vendor._id.toString()] },
+      selectedVendors: vendor._id,
     });
 
     res.status(200).json(rfqs);
