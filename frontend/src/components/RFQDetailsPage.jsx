@@ -12,7 +12,9 @@ const RFQDetailsPage = ({ userRole }) => {
 
   // State variables for vendor selections and modals
   const [reminderSelectedVendors, setReminderSelectedVendors] = useState([]);
-  const [addVendorsSelectedVendors, setAddVendorsSelectedVendors] = useState([]);
+  const [addVendorsSelectedVendors, setAddVendorsSelectedVendors] = useState(
+    []
+  );
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [isAddVendorsModalOpen, setIsAddVendorsModalOpen] = useState(false);
 
@@ -21,12 +23,16 @@ const RFQDetailsPage = ({ userRole }) => {
 
   const fetchRFQDetails = async () => {
     try {
-      const response = await axios.get(`https://petp.onrender.com/api/rfq/${rfqId}`);
+      const response = await axios.get(
+        `https://petp.onrender.com/api/rfq/${rfqId}`
+      );
       setRfqDetails(response.data);
 
       // Initialize the reminder selected vendors with those already selected in the RFQ
       if (response.data.selectedVendors) {
-        setReminderSelectedVendors(response.data.selectedVendors.map((vendor) => vendor._id));
+        setReminderSelectedVendors(
+          response.data.selectedVendors.map((vendor) => vendor._id)
+        );
       }
     } catch (error) {
       console.error("Error fetching RFQ details:", error);
@@ -38,7 +44,9 @@ const RFQDetailsPage = ({ userRole }) => {
 
     const fetchQuotes = async () => {
       try {
-        const response = await axios.get(`https://petp.onrender.com/api/quotes/${rfqId}`);
+        const response = await axios.get(
+          `https://petp.onrender.com/api/quotes/${rfqId}`
+        );
         setQuotes(response.data);
       } catch (error) {
         console.error("Error fetching quotes:", error);
@@ -47,7 +55,9 @@ const RFQDetailsPage = ({ userRole }) => {
 
     const fetchVendors = async () => {
       try {
-        const response = await axios.get("https://petp.onrender.com/api/vendors");
+        const response = await axios.get(
+          "https://petp.onrender.com/api/vendors"
+        );
         setVendors(response.data);
       } catch (error) {
         console.error("Error fetching vendors:", error);
@@ -58,17 +68,22 @@ const RFQDetailsPage = ({ userRole }) => {
     fetchVendors();
   }, [rfqId]);
 
-  const reminderVendors = vendors.filter((vendor) =>
-    rfqDetails &&
-    rfqDetails.selectedVendors &&
-    rfqDetails.selectedVendors.some((selectedVendor) => selectedVendor._id === vendor._id)
+  const reminderVendors = vendors.filter(
+    (vendor) =>
+      rfqDetails &&
+      rfqDetails.selectedVendors &&
+      rfqDetails.selectedVendors.some(
+        (selectedVendor) => selectedVendor._id === vendor._id
+      )
   );
 
   const addVendorsList = vendors.filter(
     (vendor) =>
       !rfqDetails ||
       !rfqDetails.selectedVendors ||
-      !rfqDetails.selectedVendors.some((selectedVendor) => selectedVendor._id === vendor._id)
+      !rfqDetails.selectedVendors.some(
+        (selectedVendor) => selectedVendor._id === vendor._id
+      )
   );
 
   const handleReminderVendorSelection = (vendorId) => {
@@ -91,10 +106,13 @@ const RFQDetailsPage = ({ userRole }) => {
     setIsSending(true);
     setStatusMessage("");
     try {
-      const response = await axios.post("https://petp.onrender.com/api/send-reminder", {
-        rfqId,
-        vendorIds: reminderSelectedVendors,
-      });
+      const response = await axios.post(
+        "https://petp.onrender.com/api/send-reminder",
+        {
+          rfqId,
+          vendorIds: reminderSelectedVendors,
+        }
+      );
 
       setStatusMessage(response.data.message || "Reminder sent successfully!");
     } catch (error) {
@@ -109,9 +127,12 @@ const RFQDetailsPage = ({ userRole }) => {
     setIsSending(true);
     setStatusMessage("");
     try {
-      const response = await axios.post(`https://petp.onrender.com/api/rfq/${rfqId}/add-vendors`, {
-        vendorIds: addVendorsSelectedVendors,
-      });
+      const response = await axios.post(
+        `https://petp.onrender.com/api/rfq/${rfqId}/add-vendors`,
+        {
+          vendorIds: addVendorsSelectedVendors,
+        }
+      );
 
       setStatusMessage(response.data.message || "Vendors added successfully!");
 
@@ -165,19 +186,21 @@ const RFQDetailsPage = ({ userRole }) => {
       {/* Tab Navigation */}
       <div className="flex justify-center mb-6">
         <button
-          className={`px-4 py-2 mx-2 rounded-lg ${activeTab === "details"
-            ? "bg-indigo-600 text-white"
-            : "bg-gray-200 text-gray-800 opacity-80"
-            }`}
+          className={`px-4 py-2 mx-2 rounded-lg ${
+            activeTab === "details"
+              ? "bg-indigo-600 text-white"
+              : "bg-gray-200 text-gray-800 opacity-80"
+          }`}
           onClick={() => setActiveTab("details")}
         >
           RFQ Details
         </button>
         <button
-          className={`px-4 py-2 mx-2 rounded-lg ${activeTab === "quotes"
-            ? "bg-indigo-600 text-white"
-            : "bg-gray-200 text-gray-800 opacity-80"
-            }`}
+          className={`px-4 py-2 mx-2 rounded-lg ${
+            activeTab === "quotes"
+              ? "bg-indigo-600 text-white"
+              : "bg-gray-200 text-gray-800 opacity-80"
+          }`}
           onClick={() => setActiveTab("quotes")}
         >
           Vendor Quotes
@@ -190,8 +213,8 @@ const RFQDetailsPage = ({ userRole }) => {
           <div>
             {/* RFQ Creation Time */}
             <div className="mb-4">
-              <dt className="inline font-medium">RFQ Creation Time:</dt>
-              <dd className="inline ml-2 text-black">
+              <dt className="font-medium">RFQ Creation Time:</dt>
+              <dd className="text-black">
                 {rfqDetails.createdAt
                   ? new Date(rfqDetails.createdAt).toLocaleString()
                   : "N/A"}
@@ -200,10 +223,8 @@ const RFQDetailsPage = ({ userRole }) => {
 
             {/* Selected Vendors at Creation */}
             <div className="mb-4">
-              <dt className="inline font-medium">
-                Selected Vendors at Creation:
-              </dt>
-              <dd className="inline ml-2 text-black">
+              <dt className="font-medium">Selected Vendors at Creation:</dt>
+              <dd className="text-black">
                 {rfqDetails.vendorActions
                   .filter((action) => action.action === "addedAtCreation")
                   .map((action) => action.vendorId.vendorName)
@@ -248,20 +269,57 @@ const RFQDetailsPage = ({ userRole }) => {
               </table>
             </div>
 
-
             <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(rfqDetails)
-                .filter(([key]) => !["_id", "__v", "selectedVendors"].includes(key))
-                .map(([key, value]) => (
-                  <div key={key} className="mt-1">
-                    <dt className="inline font-medium">
-                      {key.split(/(?=[A-Z])/).join(" ")}:
-                    </dt>
-                    <dd className="inline ml-2 text-black">
-                      {value ? value.toString() : "N/A"}
-                    </dd>
-                  </div>
-                ))}
+                .filter(
+                  ([key]) =>
+                    ![
+                      "_id",
+                      "__v",
+                      "selectedVendors",
+                      "vendorActions",
+                      "createdAt",
+                      "updatedAt",
+                    ].includes(key)
+                )
+                .map(([key, value]) => {
+                  // Format the key to have spaces before uppercase letters and capitalize
+                  const formattedKey = key
+                    .replace(/([A-Z])/g, " $1")
+                    .replace(/^./, (str) => str.toUpperCase());
+
+                  // Format the value based on its type
+                  let formattedValue;
+                  if (value === null || value === undefined) {
+                    formattedValue = "N/A";
+                  } else if (typeof value === "string") {
+                    formattedValue = value;
+                  } else if (typeof value === "number") {
+                    formattedValue = value.toString();
+                  } else if (typeof value === "boolean") {
+                    formattedValue = value ? "Yes" : "No";
+                  } else if (Array.isArray(value)) {
+                    formattedValue = value.join(", ");
+                  } else if (
+                    typeof value === "object" &&
+                    value instanceof Date
+                  ) {
+                    formattedValue = new Date(value).toLocaleDateString();
+                  } else if (typeof value === "object") {
+                    formattedValue = JSON.stringify(value);
+                  } else {
+                    formattedValue = value.toString();
+                  }
+
+                  return (
+                    <div key={key} className="mt-1">
+                      <dt className="inline font-medium">{formattedKey}:</dt>
+                      <dd className="inline ml-2 text-black">
+                        {formattedValue}
+                      </dd>
+                    </div>
+                  );
+                })}
             </dl>
           </div>
         ) : (
@@ -369,14 +427,18 @@ const RFQDetailsPage = ({ userRole }) => {
             <div className="fixed z-50 inset-0 overflow-y-auto">
               <div className="flex items-center justify-center min-h-screen">
                 <div className="bg-white p-6 rounded-lg shadow-lg w-3/4">
-                  <h2 className="text-xl font-bold mb-4">Select Vendors for Reminder</h2>
+                  <h2 className="text-xl font-bold mb-4">
+                    Select Vendors for Reminder
+                  </h2>
                   <ul className="mb-4">
                     {reminderVendors.map((vendor) => (
                       <li key={vendor._id} className="flex items-center mb-2">
                         <input
                           type="checkbox"
                           checked={reminderSelectedVendors.includes(vendor._id)}
-                          onChange={() => handleReminderVendorSelection(vendor._id)}
+                          onChange={() =>
+                            handleReminderVendorSelection(vendor._id)
+                          }
                           className="mr-2"
                         />
                         {vendor.vendorName}
@@ -391,8 +453,9 @@ const RFQDetailsPage = ({ userRole }) => {
                       Cancel
                     </button>
                     <button
-                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${isSending ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
+                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${
+                        isSending ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                       onClick={sendParticipationReminder}
                       disabled={isSending}
                     >
@@ -409,13 +472,17 @@ const RFQDetailsPage = ({ userRole }) => {
             <div className="fixed z-50 inset-0 overflow-y-auto">
               <div className="flex items-center justify-center min-h-screen">
                 <div className="bg-white p-6 rounded-lg shadow-lg w-3/4">
-                  <h2 className="text-xl font-bold mb-4">Select Vendors to Add</h2>
+                  <h2 className="text-xl font-bold mb-4">
+                    Select Vendors to Add
+                  </h2>
                   <ul className="mb-4">
                     {addVendorsList.map((vendor) => (
                       <li key={vendor._id} className="flex items-center mb-2">
                         <input
                           type="checkbox"
-                          checked={addVendorsSelectedVendors.includes(vendor._id)}
+                          checked={addVendorsSelectedVendors.includes(
+                            vendor._id
+                          )}
                           onChange={() => handleAddVendorsSelection(vendor._id)}
                           className="mr-2"
                         />
@@ -431,8 +498,9 @@ const RFQDetailsPage = ({ userRole }) => {
                       Cancel
                     </button>
                     <button
-                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${isSending ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
+                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${
+                        isSending ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                       onClick={addVendorsToRFQ}
                       disabled={isSending}
                     >
@@ -450,10 +518,11 @@ const RFQDetailsPage = ({ userRole }) => {
       {statusMessage && (
         <div className="mt-6 text-center">
           <p
-            className={`text-lg ${statusMessage.includes("Error")
-              ? "text-red-600 font-bold"
-              : "text-green-800 font-bold"
-              }`}
+            className={`text-lg ${
+              statusMessage.includes("Error")
+                ? "text-red-600 font-bold"
+                : "text-green-800 font-bold"
+            }`}
           >
             {statusMessage}
           </p>
