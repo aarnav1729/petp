@@ -164,18 +164,18 @@ async function sendRFQEmail(rfqData, selectedVendorIds) {
             </thead>
             <tbody>
               ${Object.entries(rfqData)
-                .map(
-                  ([key, value]) => `
+            .map(
+              ([key, value]) => `
                 <tr>
                   <td style="padding: 8px; text-align: start;">${key.replace(
-                    /([A-Z])/g,
-                    " $1"
-                  )}</td>
+                /([A-Z])/g,
+                " $1"
+              )}</td>
                   <td style="padding: 8px; text-align: start;">${value}</td>
                 </tr>
               `
-                )
-                .join("")}
+            )
+            .join("")}
             </tbody>
           </table>
           <p>We look forward to receiving your quote.</p>
@@ -214,7 +214,9 @@ const quoteSchema = new mongoose.Schema({
   message: String,
   numberOfTrucks: Number,
   validityPeriod: String,
-});
+},
+  { timestamps: true }
+);
 
 const Quote = mongoose.model("Quote", quoteSchema);
 
@@ -257,7 +259,16 @@ const rfqSchema = new mongoose.Schema({
   eReverseToggle: { type: Boolean, default: false },
   rfqType: { type: String, enum: ["Long Term", "D2D"], default: "D2D" },
   selectedVendors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' }],
-});
+  vendorActions: [
+    {
+      action: String, // "addedAtCreation", "added", "reminderSent"
+      vendorId: { type: mongoose.Schema.Types.ObjectId, ref: "Vendor" },
+      timestamp: { type: Date, default: Date.now },
+    },
+  ],
+},
+  { timestamps: true } // Adds createdAt and updatedAt fields
+);
 
 const RFQ = mongoose.model("RFQ", rfqSchema);
 
@@ -401,8 +412,7 @@ app.get("/api/active-auctions", async (req, res) => {
       if (!rfq.eReverseToggle) return false;
       // create a moment object for the ereversedate and ereversetime
       const eReverseDateTime = moment.tz(
-        `${moment(rfq.eReverseDate).format("YYYY-MM-DD")}T${
-          rfq.eReverseTime
+        `${moment(rfq.eReverseDate).format("YYYY-MM-DD")}T${rfq.eReverseTime
         }:00`,
         "Asia/Kolkata"
       );
@@ -650,6 +660,17 @@ app.post("/api/rfq", async (req, res) => {
 
     // Create a new RFQ with the generated number
     const rfq = new RFQ(newRFQData);
+
+    if (req.body.selectedVendors && req.body.selectedVendors.length > 0) {
+      req.body.selectedVendors.forEach((vendorId) => {
+        rfq.vendorActions.push({
+          action: "addedAtCreation",
+          vendorId,
+          timestamp: new Date(),
+        });
+      });
+    }
+
     await rfq.save();
 
     // Send email to vendors
@@ -813,7 +834,7 @@ app.get("/api/rfq/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid RFQ ID" });
     }
 
-    const rfq = await RFQ.findById(id).populate('selectedVendors');
+    const rfq = await RFQ.findById(id).populate('selectedVendors').populate("vendorActions.vendorId");
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
     }
@@ -841,6 +862,16 @@ app.post("/api/rfq/:id/add-vendors", async (req, res) => {
     const newVendorIds = vendorIds.filter((vendorId) => !existingVendorIds.includes(vendorId));
 
     rfq.selectedVendors = rfq.selectedVendors.concat(newVendorIds);
+
+    // Record the vendor addition actions
+    newVendorIds.forEach((vendorId) => {
+      rfq.vendorActions.push({
+        action: "added",
+        vendorId,
+        timestamp: new Date(),
+      });
+    });
+
     await rfq.save();
 
     // Send RFQ email to the newly added vendors
@@ -1251,6 +1282,18 @@ async function sendParticipationReminderEmail(rfqId, selectedVendorIds) {
 
       await transporter.sendMail(mailOptions);
       console.log("Participation reminder emails sent successfully.");
+
+      // **Add the vendorActions recording here**
+      selectedVendorIds.forEach((vendorId) => {
+        rfq.vendorActions.push({
+          action: "reminderSent",
+          vendorId,
+          timestamp: new Date(),
+        });
+      });
+
+      await rfq.save();
+
       return { success: true, message: "Reminder emails sent successfully." };
     } else {
       console.log("No valid email addresses for selected vendors.");
@@ -1298,8 +1341,7 @@ const updateRFQStatusBasedOnClosingDate = async () => {
       }
 
       const closingDateTime = moment.tz(
-        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${
-          rfq.RFQClosingTime
+        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${rfq.RFQClosingTime
         }:00`,
         "Asia/Kolkata"
       );
@@ -1385,8 +1427,7 @@ async function sendReminderEmails() {
               Dear ${labeledQuote.vendorName},
 
               Your status for RFQ ${rfq.RFQNumber} is ${labeledQuote.label}.
-              The number of trucks allotted to you is ${
-                labeledQuote.actualTrucksAllotted
+              The number of trucks allotted to you is ${labeledQuote.actualTrucksAllotted
               }.
 
               Please be ready for the e-reverse process at:

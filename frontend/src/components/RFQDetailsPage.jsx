@@ -165,21 +165,19 @@ const RFQDetailsPage = ({ userRole }) => {
       {/* Tab Navigation */}
       <div className="flex justify-center mb-6">
         <button
-          className={`px-4 py-2 mx-2 rounded-lg ${
-            activeTab === "details"
-              ? "bg-indigo-600 text-white"
-              : "bg-gray-200 text-gray-800 opacity-80"
-          }`}
+          className={`px-4 py-2 mx-2 rounded-lg ${activeTab === "details"
+            ? "bg-indigo-600 text-white"
+            : "bg-gray-200 text-gray-800 opacity-80"
+            }`}
           onClick={() => setActiveTab("details")}
         >
           RFQ Details
         </button>
         <button
-          className={`px-4 py-2 mx-2 rounded-lg ${
-            activeTab === "quotes"
-              ? "bg-indigo-600 text-white"
-              : "bg-gray-200 text-gray-800 opacity-80"
-          }`}
+          className={`px-4 py-2 mx-2 rounded-lg ${activeTab === "quotes"
+            ? "bg-indigo-600 text-white"
+            : "bg-gray-200 text-gray-800 opacity-80"
+            }`}
           onClick={() => setActiveTab("quotes")}
         >
           Vendor Quotes
@@ -190,6 +188,67 @@ const RFQDetailsPage = ({ userRole }) => {
       {activeTab === "details" ? (
         rfqDetails ? (
           <div>
+            {/* RFQ Creation Time */}
+            <div className="mb-4">
+              <dt className="inline font-medium">RFQ Creation Time:</dt>
+              <dd className="inline ml-2 text-black">
+                {rfqDetails.createdAt
+                  ? new Date(rfqDetails.createdAt).toLocaleString()
+                  : "N/A"}
+              </dd>
+            </div>
+
+            {/* Selected Vendors at Creation */}
+            <div className="mb-4">
+              <dt className="inline font-medium">
+                Selected Vendors at Creation:
+              </dt>
+              <dd className="inline ml-2 text-black">
+                {rfqDetails.vendorActions
+                  .filter((action) => action.action === "addedAtCreation")
+                  .map((action) => action.vendorId.vendorName)
+                  .join(", ") || "N/A"}
+              </dd>
+            </div>
+
+            {/* Vendor Actions */}
+            <div className="mb-4">
+              <h3 className="font-bold mb-2">Vendor Actions:</h3>
+              <table className="min-w-full divide-y divide-black">
+                <thead className="bg-green-600">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Action
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Vendor Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Timestamp
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-black">
+                  {rfqDetails.vendorActions.map((action, index) => (
+                    <tr key={index} className="hover:bg-blue-200">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {action.action}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {action.vendorId.vendorName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {action.timestamp
+                          ? new Date(action.timestamp).toLocaleString()
+                          : "N/A"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+
             <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(rfqDetails)
                 .filter(([key]) => !["_id", "__v", "selectedVendors"].includes(key))
@@ -242,6 +301,9 @@ const RFQDetailsPage = ({ userRole }) => {
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Trucks Allotted
                     </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Time Submitted
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-black">
@@ -273,6 +335,11 @@ const RFQDetailsPage = ({ userRole }) => {
                         ) : (
                           quote.trucksAllotted
                         )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {quote.createdAt
+                          ? new Date(quote.createdAt).toLocaleString()
+                          : "N/A"}
                       </td>
                     </tr>
                   ))}
@@ -324,9 +391,8 @@ const RFQDetailsPage = ({ userRole }) => {
                       Cancel
                     </button>
                     <button
-                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${
-                        isSending ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
+                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${isSending ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
                       onClick={sendParticipationReminder}
                       disabled={isSending}
                     >
@@ -365,9 +431,8 @@ const RFQDetailsPage = ({ userRole }) => {
                       Cancel
                     </button>
                     <button
-                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${
-                        isSending ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
+                      className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${isSending ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
                       onClick={addVendorsToRFQ}
                       disabled={isSending}
                     >
@@ -385,11 +450,10 @@ const RFQDetailsPage = ({ userRole }) => {
       {statusMessage && (
         <div className="mt-6 text-center">
           <p
-            className={`text-lg ${
-              statusMessage.includes("Error")
-                ? "text-red-600 font-bold"
-                : "text-green-800 font-bold"
-            }`}
+            className={`text-lg ${statusMessage.includes("Error")
+              ? "text-red-600 font-bold"
+              : "text-green-800 font-bold"
+              }`}
           >
             {statusMessage}
           </p>
