@@ -164,18 +164,18 @@ async function sendRFQEmail(rfqData, selectedVendorIds) {
             </thead>
             <tbody>
               ${Object.entries(rfqData)
-            .map(
-              ([key, value]) => `
+                .map(
+                  ([key, value]) => `
                 <tr>
                   <td style="padding: 8px; text-align: start;">${key.replace(
-                /([A-Z])/g,
-                " $1"
-              )}</td>
+                    /([A-Z])/g,
+                    " $1"
+                  )}</td>
                   <td style="padding: 8px; text-align: start;">${value}</td>
                 </tr>
               `
-            )
-            .join("")}
+                )
+                .join("")}
             </tbody>
           </table>
           <p>We look forward to receiving your quote.</p>
@@ -207,14 +207,15 @@ const vendorSchema = new mongoose.Schema({
 const Vendor = mongoose.model("Vendor", vendorSchema);
 
 // quote schema and model
-const quoteSchema = new mongoose.Schema({
-  rfqId: { type: mongoose.Schema.Types.ObjectId, ref: "RFQ" },
-  vendorName: String,
-  price: Number,
-  message: String,
-  numberOfTrucks: Number,
-  validityPeriod: String,
-},
+const quoteSchema = new mongoose.Schema(
+  {
+    rfqId: { type: mongoose.Schema.Types.ObjectId, ref: "RFQ" },
+    vendorName: String,
+    price: Number,
+    message: String,
+    numberOfTrucks: Number,
+    validityPeriod: String,
+  },
   { timestamps: true }
 );
 
@@ -233,40 +234,41 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 // rfq schema and model
-const rfqSchema = new mongoose.Schema({
-  RFQNumber: String,
-  shortName: String,
-  companyType: String,
-  sapOrder: String,
-  itemType: String,
-  customerName: String,
-  originLocation: String,
-  dropLocationState: String,
-  dropLocationDistrict: String,
-  vehicleType: String,
-  additionalVehicleDetails: String,
-  numberOfVehicles: Number,
-  weight: String,
-  budgetedPriceBySalesDept: Number,
-  maxAllowablePrice: Number,
-  eReverseDate: { type: Date, required: false },
-  eReverseTime: { type: String, required: false },
-  vehiclePlacementBeginDate: Date,
-  vehiclePlacementEndDate: Date,
-  status: { type: String, enum: ["open", "closed"], default: "open" },
-  RFQClosingDate: Date,
-  RFQClosingTime: { type: String, required: true },
-  eReverseToggle: { type: Boolean, default: false },
-  rfqType: { type: String, enum: ["Long Term", "D2D"], default: "D2D" },
-  selectedVendors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' }],
-  vendorActions: [
-    {
-      action: String, // "addedAtCreation", "added", "reminderSent"
-      vendorId: { type: mongoose.Schema.Types.ObjectId, ref: "Vendor" },
-      timestamp: { type: Date, default: Date.now },
-    },
-  ],
-},
+const rfqSchema = new mongoose.Schema(
+  {
+    RFQNumber: String,
+    shortName: String,
+    companyType: String,
+    sapOrder: String,
+    itemType: String,
+    customerName: String,
+    originLocation: String,
+    dropLocationState: String,
+    dropLocationDistrict: String,
+    vehicleType: String,
+    additionalVehicleDetails: String,
+    numberOfVehicles: Number,
+    weight: String,
+    budgetedPriceBySalesDept: Number,
+    maxAllowablePrice: Number,
+    eReverseDate: { type: Date, required: false },
+    eReverseTime: { type: String, required: false },
+    vehiclePlacementBeginDate: Date,
+    vehiclePlacementEndDate: Date,
+    status: { type: String, enum: ["open", "closed"], default: "open" },
+    RFQClosingDate: Date,
+    RFQClosingTime: { type: String, required: true },
+    eReverseToggle: { type: Boolean, default: false },
+    rfqType: { type: String, enum: ["Long Term", "D2D"], default: "D2D" },
+    selectedVendors: [{ type: mongoose.Schema.Types.ObjectId, ref: "Vendor" }],
+    vendorActions: [
+      {
+        action: String, // "addedAtCreation", "added", "reminderSent"
+        vendorId: { type: mongoose.Schema.Types.ObjectId, ref: "Vendor" },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
+  },
   { timestamps: true } // Adds createdAt and updatedAt fields
 );
 
@@ -412,7 +414,8 @@ app.get("/api/active-auctions", async (req, res) => {
       if (!rfq.eReverseToggle) return false;
       // create a moment object for the ereversedate and ereversetime
       const eReverseDateTime = moment.tz(
-        `${moment(rfq.eReverseDate).format("YYYY-MM-DD")}T${rfq.eReverseTime
+        `${moment(rfq.eReverseDate).format("YYYY-MM-DD")}T${
+          rfq.eReverseTime
         }:00`,
         "Asia/Kolkata"
       );
@@ -544,7 +547,6 @@ app.get("/api/rfqs/vendor/:username", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch RFQs for vendor" });
   }
 });
-
 
 // endpoint for adding a vendor from VendorList.jsx
 app.post("/api/add-vendor", async (req, res) => {
@@ -772,7 +774,14 @@ app.post("/api/quote", async (req, res) => {
 app.put("/api/quote/:quoteId", async (req, res) => {
   try {
     const { quoteId } = req.params;
-    const { rfqId, quote, message, vendorName, numberOfTrucks } = req.body;
+    const {
+      rfqId,
+      quote,
+      message,
+      vendorName,
+      numberOfTrucks,
+      validityPeriod,
+    } = req.body;
 
     // find the quote by ID and update it
     const updatedQuote = await Quote.findByIdAndUpdate(
@@ -834,7 +843,9 @@ app.get("/api/rfq/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid RFQ ID" });
     }
 
-    const rfq = await RFQ.findById(id).populate('selectedVendors').populate("vendorActions.vendorId");
+    const rfq = await RFQ.findById(id)
+      .populate("selectedVendors")
+      .populate("vendorActions.vendorId");
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
     }
@@ -858,8 +869,12 @@ app.post("/api/rfq/:id/add-vendors", async (req, res) => {
     }
 
     // Update the selectedVendors list
-    const existingVendorIds = rfq.selectedVendors.map((vendorId) => vendorId.toString());
-    const newVendorIds = vendorIds.filter((vendorId) => !existingVendorIds.includes(vendorId));
+    const existingVendorIds = rfq.selectedVendors.map((vendorId) =>
+      vendorId.toString()
+    );
+    const newVendorIds = vendorIds.filter(
+      (vendorId) => !existingVendorIds.includes(vendorId)
+    );
 
     rfq.selectedVendors = rfq.selectedVendors.concat(newVendorIds);
 
@@ -878,10 +893,14 @@ app.post("/api/rfq/:id/add-vendors", async (req, res) => {
     const emailResponse = await sendRFQEmail(rfq, newVendorIds);
 
     if (!emailResponse.success) {
-      return res.status(500).json({ message: "Failed to send emails to added vendors." });
+      return res
+        .status(500)
+        .json({ message: "Failed to send emails to added vendors." });
     }
 
-    res.status(200).json({ message: "Vendors added and emails sent successfully." });
+    res
+      .status(200)
+      .json({ message: "Vendors added and emails sent successfully." });
   } catch (error) {
     console.error("Error adding vendors to RFQ:", error);
     res.status(500).json({ error: "Failed to add vendors to RFQ" });
@@ -906,7 +925,9 @@ app.get("/api/factory-users", async (req, res) => {
     res.status(200).json(factoryUsers);
   } catch (error) {
     console.error("Error fetching factory users:", error);
-    res.status(500).json({ error: "Failed to fetch factory users", details: error.message });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch factory users", details: error.message });
   }
 });
 
@@ -1341,7 +1362,8 @@ const updateRFQStatusBasedOnClosingDate = async () => {
       }
 
       const closingDateTime = moment.tz(
-        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${rfq.RFQClosingTime
+        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${
+          rfq.RFQClosingTime
         }:00`,
         "Asia/Kolkata"
       );
@@ -1427,7 +1449,8 @@ async function sendReminderEmails() {
               Dear ${labeledQuote.vendorName},
 
               Your status for RFQ ${rfq.RFQNumber} is ${labeledQuote.label}.
-              The number of trucks allotted to you is ${labeledQuote.actualTrucksAllotted
+              The number of trucks allotted to you is ${
+                labeledQuote.actualTrucksAllotted
               }.
 
               Please be ready for the e-reverse process at:
