@@ -17,20 +17,37 @@ const VendorQuoteForm = ({ username }) => {
   const [vendorQuote, setVendorQuote] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [minTrucksRequired, setMinTrucksRequired] = useState(0);
+  const [rfqStatus, setRfqStatus] = useState("");
+  const [l1Price, setL1Price] = useState(null);
+  const [isInitialQuoteSubmitted, setIsInitialQuoteSubmitted] = useState(false);
 
   // fetch rfq details and quote from backend
   useEffect(() => {
     const fetchRFQDetails = async () => {
       // fetch rfq details from backend
       try {
-        const response = await axios.get(`https://petp.onrender.com/api/rfq/${rfqId}`);
+        const response = await axios.get(
+          `http://localhost:5000/api/rfq/${rfqId}`
+        );
         setRfqDetails(response.data);
+        setRfqStatus(response.data.status);
+        setL1Price(response.data.l1Price);
+
+        // Calculate minimum trucks required (39% of total, rounded down)
+        const minTrucks = Math.floor(0.39 * response.data.numberOfVehicles);
+        setMinTrucksRequired(minTrucks);
 
         // fetch quote and number of trucks from backend
-        const quoteResponse = await axios.get(`https://petp.onrender.com/api/quotes/${rfqId}`);
-        const existingQuote = quoteResponse.data.find(q => q.vendorName === username);
+        const quoteResponse = await axios.get(
+          `http://localhost:5000/api/quotes/${rfqId}`
+        );
+        const existingQuote = quoteResponse.data.find(
+          (q) => q.vendorName === username
+        );
         // set quote, number of trucks and message
         if (existingQuote) {
+          setIsInitialQuoteSubmitted(true);
           setQuote(existingQuote.price);
           setNumberOfTrucks(existingQuote.numberOfTrucks);
           setvalidityPeriod(existingQuote.validityPeriod);
@@ -49,14 +66,28 @@ const VendorQuoteForm = ({ username }) => {
   const handleQuoteSubmit = async (e) => {
     // prevent default form submission
     e.preventDefault();
+    setErrors({});
+
+    let hasError = false;
+    const newErrors = {};
 
     // type-checking
+
     if (!/^\d+$/.test(quote)) {
-      setErrors((prevErrors) => ({ ...prevErrors, quote: "Quote must contain only digits." }));
-      return;
+      newErrors.quote = "Quote must contain only digits.";
+      hasError = true;
     }
+
     if (!/^\d+$/.test(numberOfTrucks)) {
-      setErrors((prevErrors) => ({ ...prevErrors, numberOfTrucks: "Number of Trucks must contain only digits." }));
+      newErrors.numberOfTrucks = "Number of Trucks must contain only digits.";
+      hasError = true;
+    } else if (parseInt(numberOfTrucks) < minTrucksRequired) {
+      newErrors.numberOfTrucks = `Number of Trucks must be at least ${minTrucksRequired}.`;
+      hasError = true;
+    }
+
+    if (hasError) {
+      setErrors(newErrors);
       return;
     }
 
@@ -74,10 +105,13 @@ const VendorQuoteForm = ({ username }) => {
 
       // update existing quote or create new quote
       if (vendorQuote) {
-        await axios.put(`https://petp.onrender.com/api/quote/${vendorQuote._id}`, quoteData);
+        await axios.put(
+          `http://localhost:5000/api/quote/${vendorQuote._id}`,
+          quoteData
+        );
         alert("Quote updated successfully!");
       } else {
-        await axios.post("https://petp.onrender.com/api/quote", quoteData);
+        await axios.post("http://localhost:5000/api/quote", quoteData);
         alert("Quote submitted successfully!");
       }
 
@@ -85,7 +119,12 @@ const VendorQuoteForm = ({ username }) => {
       navigate("/vendor-rfq-list");
     } catch (error) {
       console.error("Error submitting quote:", error);
-      alert("Failed to submit quote. Please try again.");
+      if (error.response && error.response.data && error.response.data.error) {
+        // If the error comes from backend validation
+        setErrors({ submit: error.response.data.error });
+      } else {
+        alert("Failed to submit quote. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +137,10 @@ const VendorQuoteForm = ({ username }) => {
     // set quote, number of trucks and message
     if (name === "quote") {
       if (!/^\d*$/.test(value)) {
-        setErrors((prevErrors) => ({ ...prevErrors, quote: "Quote must contain only digits." }));
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          quote: "Quote must contain only digits.",
+        }));
       } else {
         setErrors((prevErrors) => ({ ...prevErrors, quote: "" }));
       }
@@ -108,15 +150,25 @@ const VendorQuoteForm = ({ username }) => {
     // set number of trucks
     if (name === "numberOfTrucks") {
       if (!/^\d*$/.test(value)) {
-        setErrors((prevErrors) => ({ ...prevErrors, numberOfTrucks: "Number of Trucks must contain only digits." }));
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          numberOfTrucks: "Number of Trucks must contain only digits.",
+        }));
       } else {
         setErrors((prevErrors) => ({ ...prevErrors, numberOfTrucks: "" }));
       }
       setNumberOfTrucks(value);
     }
 
-    // set validityPeriod
     if (name === "validityPeriod") {
+      if (!/^\d{0,3}$/.test(value)) {
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          validityPeriod: "Validity period must be a number up to 3 digits.",
+        }));
+      } else {
+        setErrors((prevErrors) => ({ ...prevErrors, validityPeriod: "" }));
+      }
       setvalidityPeriod(value);
     }
 
@@ -131,10 +183,140 @@ const VendorQuoteForm = ({ username }) => {
     return <div>Loading...</div>;
   }
 
+  // Conditional rendering based on RFQ status
+  if (rfqStatus === "initial") {
+    // Allow initial quote submission (continue to render the form below)
+  } else if (rfqStatus === "evaluation") {
+    if (!isInitialQuoteSubmitted) {
+      return (
+        <div className="container mx-auto mt-8 px-4 py-6 bg-white rounded-lg shadow-lg">
+          <h2 className="text-2xl font-bold text-center mb-6">
+            You did not submit an initial quote. You cannot update your quote
+            now.
+          </h2>
+        </div>
+      );
+    }
+    if (username === rfqDetails.l1VendorId) {
+      return (
+        <div className="container mx-auto mt-8 px-4 py-6 bg-white rounded-lg shadow-lg">
+          <h2 className="text-2xl font-bold text-center mb-6">
+            Your price is locked as L1. You cannot update your quote.
+          </h2>
+        </div>
+      );
+    }
+
+    return (
+      <div className="container mx-auto mt-8 px-4 py-6 bg-white rounded-lg shadow-lg">
+        <h2 className="text-2xl font-bold text-center mb-6">
+          Update Your Quote (No Regret Price)
+        </h2>
+        <p className="text-center mb-4">L1 Price is: {l1Price}</p>
+        {/* Render the form to submit "No Regret Price" */}
+        <form onSubmit={handleQuoteSubmit} className="mt-4">
+          <div className="mb-4">
+            <label className="block mb-1">Quote Per Truck</label>
+            <input
+              type="number"
+              name="quote"
+              value={quote}
+              onChange={handleInputChange}
+              className="w-full p-2 border border-gray-300 rounded"
+              required
+              disabled={isLoading}
+            />
+            {errors.quote && (
+              <p className="text-red-700 text-sm font-bold mt-1">
+                {errors.quote}
+              </p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block mb-1">Number of Trucks</label>
+            <input
+              type="number"
+              name="numberOfTrucks"
+              value={numberOfTrucks}
+              onChange={handleInputChange}
+              className="w-full p-2 border border-gray-300 rounded"
+              required
+              disabled={isLoading}
+              min={minTrucksRequired}
+            />
+            <p className="text-gray-600 text-sm mt-1">
+              Please enter at least {minTrucksRequired} trucks.
+            </p>
+            {errors.numberOfTrucks && (
+              <p className="text-red-700 text-sm font-bold mt-1">
+                {errors.numberOfTrucks}
+              </p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block mb-1">
+              How long is your quote valid (in days)?
+            </label>
+            <input
+              type="number"
+              name="validityPeriod"
+              value={validityPeriod}
+              onChange={handleInputChange}
+              className="w-full p-1 border border-gray-300 rounded"
+              disabled={isLoading}
+            />
+            {errors.validityPeriod && (
+              <p className="text-red-700 text-sm font-bold mt-1">
+                {errors.validityPeriod}
+              </p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block mb-1">Message (Optional)</label>
+            <textarea
+              name="message"
+              value={message}
+              onChange={handleInputChange}
+              className="w-full p-2 border border-gray-300 rounded"
+              disabled={isLoading}
+            />
+          </div>
+
+          {errors.submit && (
+            <p className="text-red-700 text-sm font-bold mt-1">
+              {errors.submit}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className={`w-full p-2 bg-indigo-500 text-white rounded ${
+              isLoading ? "cursor-not-allowed opacity-50" : ""
+            }`}
+            disabled={isLoading}
+          >
+            {isLoading ? "Submitting..." : "Update Quote"}
+          </button>
+        </form>
+      </div>
+    );
+  } else {
+    return (
+      <div className="container mx-auto mt-8 px-4 py-6 bg-white rounded-lg shadow-lg">
+        <h2 className="text-2xl font-bold text-center mb-6">
+          The RFQ is closed. You cannot submit a quote.
+        </h2>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto mt-8 px-4 py-6 bg-white rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold text-center mb-6">
-        Submit Quote for RFQ {rfqDetails.RFQNumber}
+        Submit Quote for {rfqDetails.RFQNumber}
       </h2>
       <form onSubmit={handleQuoteSubmit} className="mt-4">
         <div className="mb-4">
@@ -148,7 +330,11 @@ const VendorQuoteForm = ({ username }) => {
             required
             disabled={isLoading}
           />
-          {errors.quote && <p className="text-red-700 text-sm font-bold mt-1">{errors.quote}</p>}
+          {errors.quote && (
+            <p className="text-red-700 text-sm font-bold mt-1">
+              {errors.quote}
+            </p>
+          )}
         </div>
 
         <div className="mb-4">
@@ -161,8 +347,16 @@ const VendorQuoteForm = ({ username }) => {
             className="w-full p-2 border border-gray-300 rounded"
             required
             disabled={isLoading}
+            min={minTrucksRequired}
           />
-          {errors.numberOfTrucks && <p className="text-red-700 text-sm font-bold mt-1">{errors.numberOfTrucks}</p>}
+          <p className="text-gray-600 text-sm mt-1">
+            Please enter at least {minTrucksRequired} trucks.
+          </p>
+          {errors.numberOfTrucks && (
+            <p className="text-red-700 text-sm font-bold mt-1">
+              {errors.numberOfTrucks}
+            </p>
+          )}
         </div>
 
         <div className="mb-4">
@@ -187,13 +381,22 @@ const VendorQuoteForm = ({ username }) => {
           />
         </div>
 
+        {errors.submit && (
+          <p className="text-red-700 text-sm font-bold mt-1">{errors.submit}</p>
+        )}
+
         <button
           type="submit"
-          className={`w-full p-2 bg-indigo-500 text-white rounded ${isLoading ? "cursor-not-allowed opacity-50" : ""
-            }`}
+          className={`w-full p-2 bg-indigo-500 text-white rounded ${
+            isLoading ? "cursor-not-allowed opacity-50" : ""
+          }`}
           disabled={isLoading}
         >
-          {isLoading ? "Submitting..." : vendorQuote ? "Update Quote" : "Submit Quote"}
+          {isLoading
+            ? "Submitting..."
+            : vendorQuote
+            ? "Update Quote"
+            : "Submit Quote"}
         </button>
       </form>
     </div>

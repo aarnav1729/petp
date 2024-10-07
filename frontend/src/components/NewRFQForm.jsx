@@ -8,11 +8,13 @@ const NewRFQForm = () => {
     companyType: "",
     sapOrder: "",
     itemType: "",
+    customItemType: "",
     customerName: "",
     originLocation: "",
     dropLocationState: "",
     dropLocationDistrict: "",
     vehicleType: "",
+    customVehicleType: "",
     additionalVehicleDetails: "",
     numberOfVehicles: "",
     weight: "",
@@ -783,7 +785,7 @@ const NewRFQForm = () => {
     try {
       setIsLoading(true);
       const response = await axios.get(
-        "https://petp.onrender.com/api/next-rfq-number"
+        "http://localhost:5000/api/next-rfq-number"
       );
       setFormData((prevData) => ({
         ...prevData,
@@ -799,7 +801,7 @@ const NewRFQForm = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("https://petp.onrender.com/api/vendors");
+      const response = await axios.get("http://localhost:5000/api/vendors");
       setVendors(response.data); // Set vendor data
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -842,6 +844,26 @@ const NewRFQForm = () => {
       return;
     }
 
+    // Reset custom fields when dropdown changes
+    if (name === "itemType" && value !== "Others") {
+      setFormData((prevData) => ({
+        ...prevData,
+        itemType: value,
+        customItemType: "",
+      }));
+    } else if (name === "vehicleType" && value !== "Other") {
+      setFormData((prevData) => ({
+        ...prevData,
+        vehicleType: value,
+        customVehicleType: "",
+      }));
+    } else {
+      setFormData((prevData) => ({
+        ...prevData,
+        [name]: type === "checkbox" ? checked : value,
+      }));
+    }
+
     let error = "";
     if (
       [
@@ -858,6 +880,14 @@ const NewRFQForm = () => {
     } else if (name === "sapOrder") {
       if (!/^[a-zA-Z0-9]*$/.test(value)) {
         error = "This field must be alphanumeric.";
+      }
+    }
+
+    // Add this validation block for 'weight'
+    if (name === "weight" && value !== "") {
+      const numericValue = parseInt(value, 10);
+      if (isNaN(numericValue) || numericValue < 1 || numericValue > 99) {
+        error = "Weight must be a number between 1 and 99.";
       }
     }
 
@@ -880,6 +910,18 @@ const NewRFQForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (formData.itemType === "Others" && !formData.customItemType.trim()) {
+      alert("Please specify the Item Type.");
+      return;
+    }
+    if (
+      formData.vehicleType === "Other" &&
+      !formData.customVehicleType.trim()
+    ) {
+      alert("Please specify the Vehicle Type.");
+      return;
+    }
 
     if (Object.values(errors).some((error) => error)) {
       alert(
@@ -905,10 +947,21 @@ const NewRFQForm = () => {
         ...formData,
         selectedVendors,
         eReverseDate: eReverseDateTime,
+        itemType:
+          formData.itemType === "Others"
+            ? formData.customItemType
+            : formData.itemType,
+        vehicleType:
+          formData.vehicleType === "Other"
+            ? formData.customVehicleType
+            : formData.vehicleType,
       };
 
+      delete dataToSend.customItemType;
+      delete dataToSend.customVehicleType;
+
       const response = await axios.post(
-        "https://petp.onrender.com/api/rfq",
+        "http://localhost:5000/api/rfq",
         dataToSend
       );
 
@@ -923,11 +976,13 @@ const NewRFQForm = () => {
           companyType: "",
           sapOrder: "",
           itemType: "",
+          customItemType: "",
           customerName: "",
           originLocation: "",
           dropLocationState: "",
           dropLocationDistrict: "",
           vehicleType: "",
+          customVehicleType: "",
           additionalVehicleDetails: "",
           numberOfVehicles: "",
           weight: "",
@@ -1062,6 +1117,23 @@ const NewRFQForm = () => {
             <option value="Cell">Cell</option>
             <option value="Others">Others</option>
           </select>
+
+          {/* Conditionally render custom Item Type input */}
+          {formData.itemType === "Others" && (
+            <div className="mt-2">
+              <label className="block text-xl font-medium text-black">
+                Please specify Item Type
+              </label>
+              <input
+                type="text"
+                name="customItemType"
+                value={formData.customItemType}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                required
+              />
+            </div>
+          )}
         </div>
 
         <div className="mb-4">
@@ -1159,6 +1231,23 @@ const NewRFQForm = () => {
             <option value="Pickup">Pickup</option>
             <option value="Other">Other</option>
           </select>
+
+          {/* Conditionally render custom Vehicle Type input */}
+          {formData.vehicleType === "Other" && (
+            <div className="mt-2">
+              <label className="block text-xl font-medium text-black">
+                Please specify Vehicle Type
+              </label>
+              <input
+                type="text"
+                name="customVehicleType"
+                value={formData.customVehicleType}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                required
+              />
+            </div>
+          )}
         </div>
 
         <div className="mb-4">
@@ -1209,10 +1298,12 @@ const NewRFQForm = () => {
             Weight in Tons
           </label>
           <input
-            type="text"
+            type="number"
             name="weight"
             value={formData.weight}
             onChange={handleChange}
+            min="1"
+            max="99"
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
@@ -1288,7 +1379,7 @@ const NewRFQForm = () => {
         </div>
 
         {/* E-Reverse Toggle Switch */}
-        <div className="mb-4">
+        {/* <div className="mb-4"> 
           <label className="block text-xl font-medium text-black">
             E-Reverse:
           </label>
@@ -1303,7 +1394,7 @@ const NewRFQForm = () => {
             <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600 peer-focus:ring-2 peer-focus:ring-indigo-500 transition-all duration-300"></div>
             <div className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 transform peer-checked:translate-x-full"></div>
           </label>
-        </div>
+        </div> */}
 
         {/* Conditionally render eReverseDate and eReverseTime fields */}
         {formData.eReverseToggle && (

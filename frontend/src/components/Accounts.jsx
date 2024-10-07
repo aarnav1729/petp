@@ -10,7 +10,7 @@ const Accounts = () => {
 
   const fetchPendingAccounts = async () => {
     try {
-      const response = await axios.get("https://petp.onrender.com/api/pending-accounts");
+      const response = await axios.get("http://localhost:5000/api/pending-accounts");
       setPendingAccounts(response.data);
     } catch (error) {
       console.error("Error fetching pending accounts:", error);
@@ -19,11 +19,21 @@ const Accounts = () => {
 
   const approveAccount = async (id) => {
     try {
-      await axios.post(`https://petp.onrender.com/api/approve-account/${id}`);
+      await axios.post(`http://localhost:5000/api/approve-account/${id}`);
       // Remove the approved account from the list
       setPendingAccounts(pendingAccounts.filter((account) => account._id !== id));
     } catch (error) {
       console.error("Error approving account:", error);
+    }
+  };
+
+  const declineAccount = async (id) => {
+    try {
+      await axios.post(`http://localhost:5000/api/decline-account/${id}`);
+      // Remove the declined account from the list
+      setPendingAccounts(pendingAccounts.filter((account) => account._id !== id));
+    } catch (error) {
+      console.error("Error declining account:", error);
     }
   };
 
@@ -66,6 +76,12 @@ const Accounts = () => {
                       className="bg-green-600 hover:bg-green-800 text-white font-bold py-2 px-4 rounded"
                     >
                       Accept
+                    </button>
+                    <button
+                      onClick={() => declineAccount(account._id)}
+                      className="bg-red-600 hover:bg-red-800 text-white font-bold py-2 px-4 rounded ml-2"
+                    >
+                      Decline
                     </button>
                   </td>
                 </tr>

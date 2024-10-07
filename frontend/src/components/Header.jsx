@@ -12,21 +12,18 @@ const Header = ({ role, onLogout }) => {
     role === "admin"
       ? [
           { to: "/rfq-list", label: "RFQ List" },
-          { to: "/vendor-list", label: "Vendor List" },
-          { to: "/active-auctions", label: "Active Auctions" },
+          { to: "/vendor-list", label: "Users" },
           { to: "/accounts", label: "Accounts" },
         ]
       : role === "vendor"
       ? [
           { to: "/vendor-rfq-list", label: "View RFQs" },
-          { to: "/active-auctions", label: "Active Auctions" },
           { to: "/pending-rfqs", label: "Pending RFQs" },
         ]
       : role === "factory"
       ? [
           { to: "/new-rfq", label: "New RFQ" },
-          { to: "/rfq-list", label: "RFQ List" },
-          { to: "/closed-rfqs", label: "Closed RFQs" },
+          { to: "/factory-rfq-list", label: "RFQ List" },
         ]
       : [
           { to: "/terms", label: "Terms & Conditions" },
@@ -124,7 +121,7 @@ const Header = ({ role, onLogout }) => {
             >
               <ul
                 className={`flex flex-col gap-6 tracking-wide lg:flex-row lg:gap-0 lg:text-sm ${
-                  scrolled ? "text-black" : "text-white"
+                  scrolled ? "text-white" : "text-white"
                 }`}
               >
                 {navLinks.map((link, index) => (
@@ -132,7 +129,7 @@ const Header = ({ role, onLogout }) => {
                     <Link
                       to={link.to}
                       className={`hover:text-indigo-600 hover:bg-white p-2 rounded font-bold block transition ${
-                        scrolled ? "text-black" : "text-white"
+                        scrolled ? "text-white" : "text-white"
                       } hover:text-secondary md:px-4`}
                       onClick={() => setOpenNav(false)}
                     >

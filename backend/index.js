@@ -26,7 +26,7 @@ app.use(cors());
 app.use(express.json());
 
 // socket.io configuration
-io.on("connection", (socket) => {
+{/*io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
   socket.on(
@@ -86,7 +86,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
   });
-});
+});*/}
 
 // connect to monogdb
 mongoose
@@ -148,39 +148,55 @@ async function sendRFQEmail(rfqData, selectedVendorIds) {
         },
       });
 
+      // Fields to exclude from the email
+      const excludedFields = [
+        "_id",
+        "budgetedPriceBySalesDept",
+        "maxAllowablePrice",
+        "customerName",
+        "selectedVendors",
+        "vendorActions",
+        "createdAt",
+        "updatedAt",
+        "__v",
+      ];
+
       const mailOptions = {
         from: "aarnavsingh836@gmail.com",
         to: vendorEmails.join(", "),
-        subject: "New RFQ Posted",
+        subject: "New RFQ Posted - Submit Initial Quote within 24 hours",
         html: `
-          <p>Dear Vendor,</p>
-          <p>We are pleased to inform you that a new RFQ has been posted. Below are the details:</p>
-          <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; inline-size: 100%;">
-            <thead>
-              <tr>
-                <th style="background-color: #f2f2f2;">Field</th>
-                <th style="background-color: #f2f2f2;">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${Object.entries(rfqData)
-                .map(
-                  ([key, value]) => `
-                <tr>
-                  <td style="padding: 8px; text-align: start;">${key.replace(
-                    /([A-Z])/g,
-                    " $1"
-                  )}</td>
-                  <td style="padding: 8px; text-align: start;">${value}</td>
-                </tr>
-              `
-                )
-                .join("")}
-            </tbody>
-          </table>
-          <p>We look forward to receiving your quote.</p>
-          <p>Best regards,<br/>Premier Energies Limited</p>
-        `,
+              <p>Dear Vendor,</p>
+              <p>You are one of the selected vendors for ${
+                rfqData.RFQNumber
+              }. You have 24 hours to submit an initial quote. Only vendors who submit an initial quote will be allowed to update their quote during the evaluation period.</p>
+              <p>Please log in to your account to submit your quote.</p>
+              <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; inline-size: 100%;">
+                <thead>
+                  <tr>
+                    <th style="background-color: #f2f2f2;">Field</th>
+                    <th style="background-color: #f2f2f2;">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${Object.entries(rfqData)
+                    .filter(([key]) => !excludedFields.includes(key))
+                    .map(
+                      ([key, value]) => `
+                    <tr>
+                      <td style="padding: 8px; text-align: start;">${key
+                        .replace(/([A-Z])/g, " $1")
+                        .replace(/^./, (str) => str.toUpperCase())}</td>
+                      <td style="padding: 8px; text-align: start;">${value}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+              <p>We look forward to receiving your quote.</p>
+              <p>Best regards,<br/>Premier Energies Limited</p>
+            `,
       };
       await transporter.sendMail(mailOptions);
       console.log("Emails sent to selected vendors.");
@@ -215,6 +231,8 @@ const quoteSchema = new mongoose.Schema(
     message: String,
     numberOfTrucks: Number,
     validityPeriod: String,
+    label: String, 
+    trucksAllotted: Number, 
   },
   { timestamps: true }
 );
@@ -255,7 +273,15 @@ const rfqSchema = new mongoose.Schema(
     eReverseTime: { type: String, required: false },
     vehiclePlacementBeginDate: Date,
     vehiclePlacementEndDate: Date,
-    status: { type: String, enum: ["open", "closed"], default: "open" },
+    status: {
+      type: String,
+      enum: ["initial", "evaluation", "closed"],
+      default: "initial",
+    },
+    initialQuoteEndTime: Date,
+    evaluationEndTime: Date,
+    l1Price: Number,
+    l1VendorId: { type: mongoose.Schema.Types.ObjectId, ref: "Vendor" },
     RFQClosingDate: Date,
     RFQClosingTime: { type: String, required: true },
     eReverseToggle: { type: Boolean, default: false },
@@ -274,7 +300,80 @@ const rfqSchema = new mongoose.Schema(
 
 const RFQ = mongoose.model("RFQ", rfqSchema);
 
+// verification schema and model
+const verificationSchema = new mongoose.Schema({
+  email: { type: String, required: true },
+  otp: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now, expires: 300 }, // expires after 5 minutes
+});
+
+const Verification = mongoose.model("Verification", verificationSchema);
+
 // api endpoints
+
+// endpoint to send OTP to user's email
+app.post("/api/send-otp", async (req, res) => {
+  const { email } = req.body;
+
+  // generate a 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  try {
+    // save the OTP to the database
+    const newVerification = new Verification({ email, otp });
+    await newVerification.save();
+
+    // send the OTP email
+    const mailOptions = {
+      from: "aarnavsingh836@gmail.com",
+      to: email,
+      subject: "Your OTP for Registration",
+      text: `Your OTP for registration is: ${otp}. It is valid for 5 minutes.`,
+    };
+
+    const accessTokenResponse = await oAuth2Client.getAccessToken();
+    const accessToken = accessTokenResponse.token;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        type: "OAuth2",
+        user: "aarnavsingh836@gmail.com",
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        refreshToken: REFRESH_TOKEN,
+        accessToken: accessToken,
+      },
+    });
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ success: true, message: "OTP sent to email." });
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    res.status(500).json({ success: false, message: "Failed to send OTP." });
+  }
+});
+
+// endpoint to verify OTP
+app.post("/api/verify-otp", async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    const verification = await Verification.findOne({ email, otp });
+    if (verification) {
+      // OTP is correct
+      // Remove the verification entry
+      await Verification.deleteOne({ _id: verification._id });
+      res.status(200).json({ success: true, message: "OTP verified." });
+    } else {
+      res.status(400).json({ success: false, message: "Invalid OTP." });
+    }
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    res.status(500).json({ success: false, message: "Failed to verify OTP." });
+  }
+});
 
 // endpoint for logging in
 app.post("/api/login", async (req, res) => {
@@ -396,7 +495,7 @@ app.post("/api/approve-account/:id", async (req, res) => {
 });
 
 // endpoint for fetching active auctions
-app.get("/api/active-auctions", async (req, res) => {
+{/* app.get("/api/active-auctions", async (req, res) => {
   try {
     // get the current time in IST
     const now = moment().tz("Asia/Kolkata");
@@ -450,7 +549,7 @@ app.get("/api/active-auctions", async (req, res) => {
     console.error("Error fetching active auctions:", error);
     res.status(500).json({ error: "Failed to fetch active auctions" });
   }
-});
+});*/}
 
 // endpoint for vendor registration
 app.post("/api/register", async (req, res) => {
@@ -644,6 +743,13 @@ app.get("/api/next-rfq-number", async (req, res) => {
 // endpoint for creating a new RFQ
 app.post("/api/rfq", async (req, res) => {
   try {
+    const now = moment().tz("Asia/Kolkata");
+    // For testing, set initial quote period to 1 minute
+    const initialQuoteEndTime = now.clone().add(10, "minutes").toDate();
+    // Set evaluation period to 2 minutes after initial period
+    const evaluationEndTime = now.clone().add(999, "minutes").toDate();
+    
+
     // Fetch the last created RFQ to get the current highest RFQNumber
     const lastRFQ = await RFQ.findOne().sort({ _id: -1 });
 
@@ -656,7 +762,9 @@ app.post("/api/rfq", async (req, res) => {
     const newRFQData = {
       ...req.body,
       RFQNumber: nextRFQNumber,
-      status: "open",
+      status: "initial",
+      initialQuoteEndTime,
+      evaluationEndTime,
       selectedVendors: req.body.selectedVendors,
     };
 
@@ -724,49 +832,82 @@ app.post("/api/quote", async (req, res) => {
       validityPeriod,
     } = req.body;
 
-    // save quote with vendorName
-    const newQuote = new Quote({
-      rfqId,
-      vendorName,
-      price: quote,
-      numberOfTrucks,
-      validityPeriod,
-      message,
-    });
-    await newQuote.save();
+    // Fetch the RFQ to get numberOfVehicles
+    const rfq = await RFQ.findById(rfqId);
+    if (!rfq) {
+      return res.status(404).json({ error: "RFQ not found" });
+    }
 
-    const adminEmail = "aarnavsingh836@gmail.com";
+    const now = moment().tz("Asia/Kolkata");
 
-    const mailOptions = {
-      from: "aarnavsingh836@gmail.com",
-      to: adminEmail,
-      subject: "New Quote Submitted",
-      text: `A new quote has been submitted for RFQ ID: ${rfqId}\nVendor: ${vendorName}\nQuote: ${quote}\nValidity Period: ${validityPeriod}\nMessage: ${message}`,
-    };
+    const minTrucksRequired = Math.floor(0.39 * rfq.numberOfVehicles);
 
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
+    if (numberOfTrucks < minTrucksRequired) {
+      return res.status(400).json({
+        error: `Number of Trucks must be at least ${minTrucksRequired}`,
+      });
+    }
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "aarnavsingh836@gmail.com",
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken,
-      },
-    });
+    if (rfq.status === "initial") {
+      if (now.isAfter(rfq.initialQuoteEndTime)) {
+        return res
+          .status(400)
+          .json({ error: "Initial quote period has ended." });
+      }
 
-    await transporter.sendMail(mailOptions);
+      // Allow submission of initial quotes
+      // Save or update the quote
+      let existingQuote = await Quote.findOne({ rfqId, vendorName });
+      if (existingQuote) {
+        existingQuote.price = quote;
+        existingQuote.numberOfTrucks = numberOfTrucks;
+        existingQuote.message = message;
+        existingQuote.validityPeriod = validityPeriod;
+        await existingQuote.save();
+      } else {
+        const newQuote = new Quote({
+          rfqId,
+          vendorName,
+          price: quote,
+          numberOfTrucks,
+          message,
+          validityPeriod,
+        });
+        await newQuote.save();
+      }
 
-    res
-      .status(200)
-      .json({ message: "Quote submitted and email sent to admin" });
+      res.status(200).json({ message: "Quote submitted successfully." });
+    } else if (rfq.status === "evaluation") {
+      // Only allow vendors who submitted initial quotes to update
+      const existingQuote = await Quote.findOne({ rfqId, vendorName });
+      if (!existingQuote) {
+        return res
+          .status(400)
+          .json({ error: "You did not submit an initial quote." });
+      }
+
+      if (vendorName === rfq.l1VendorId) {
+        return res
+          .status(400)
+          .json({ error: "L1 vendor cannot update the quote." });
+      }
+
+      // Allow updating the quote
+      existingQuote.price = quote;
+      existingQuote.numberOfTrucks = numberOfTrucks;
+      existingQuote.message = message;
+      existingQuote.validityPeriod = validityPeriod;
+      await existingQuote.save();
+
+      res.status(200).json({ message: "Quote updated successfully." });
+    } else {
+      return res
+        .status(400)
+        .json({ error: "RFQ is closed. You cannot submit a quote." });
+    }
   } catch (error) {
     console.error("Error submitting quote:", error);
-    res.status(500).json({ error: "Failed to submit quote" });
+    res.status(500).json({ error: "Failed to submit quote." });
   }
 });
 
@@ -782,6 +923,20 @@ app.put("/api/quote/:quoteId", async (req, res) => {
       numberOfTrucks,
       validityPeriod,
     } = req.body;
+
+    // Fetch the RFQ to get numberOfVehicles
+    const rfq = await RFQ.findById(rfqId);
+    if (!rfq) {
+      return res.status(404).json({ error: "RFQ not found" });
+    }
+
+    const minTrucksRequired = Math.floor(0.39 * rfq.numberOfVehicles);
+
+    if (numberOfTrucks < minTrucksRequired) {
+      return res.status(400).json({
+        error: `Number of Trucks must be at least ${minTrucksRequired}`,
+      });
+    }
 
     // find the quote by ID and update it
     const updatedQuote = await Quote.findByIdAndUpdate(
@@ -843,12 +998,21 @@ app.get("/api/rfq/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid RFQ ID" });
     }
 
+    // Fetch the RFQ and populate the necessary fields
     const rfq = await RFQ.findById(id)
       .populate("selectedVendors")
-      .populate("vendorActions.vendorId");
+      .populate("vendorActions.vendorId")
+      .lean(); // Use .lean() to get a plain JavaScript object
+
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
     }
+
+    // Fetch quotes for this RFQ, including labels and trucksAllotted
+    const quotes = await Quote.find({ rfqId: id });
+
+    // Add quotes to the rfq object
+    rfq.quotes = quotes;
 
     res.status(200).json(rfq);
   } catch (error) {
@@ -889,8 +1053,11 @@ app.post("/api/rfq/:id/add-vendors", async (req, res) => {
 
     await rfq.save();
 
+    // Convert the RFQ document to a plain JavaScript object
+    const rfqData = rfq.toObject();
+
     // Send RFQ email to the newly added vendors
-    const emailResponse = await sendRFQEmail(rfq, newVendorIds);
+    const emailResponse = await sendRFQEmail(rfqData, newVendorIds);
 
     if (!emailResponse.success) {
       return res
@@ -1033,6 +1200,61 @@ app.get("/api/vendors", async (req, res) => {
   }
 });
 
+app.post("/api/decline-account/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the user by ID
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Send account rejection email
+    const mailOptions = {
+      from: "aarnavsingh836@gmail.com",
+      to: user.email,
+      subject: "Account Rejected",
+      text: `
+        Dear ${user.username},
+
+        We regret to inform you that your account registration has been rejected by the admin.
+
+        For any further inquiries, please contact our support team.
+
+        Best regards,
+        Premier Energies Team
+      `,
+    };
+
+    const accessTokenResponse = await oAuth2Client.getAccessToken();
+    const accessToken = accessTokenResponse.token;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        type: "OAuth2",
+        user: "aarnavsingh836@gmail.com",
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        refreshToken: REFRESH_TOKEN,
+        accessToken: accessToken,
+      },
+    });
+
+    await transporter.sendMail(mailOptions);
+
+    // Delete the user from the database
+    await User.findByIdAndDelete(id);
+
+    res.status(200).json({ message: "User account declined and email sent." });
+  } catch (error) {
+    console.error("Error declining user account:", error);
+    res.status(500).json({ error: "Failed to decline user account" });
+  }
+});
+
 // endpoint to delete a vendor by ID
 app.delete("/api/vendors/:id", async (req, res) => {
   try {
@@ -1081,32 +1303,188 @@ app.patch("/api/rfq/:id", async (req, res) => {
 });
 
 // function to assign labels and actual trucks allotted
-const assignQuoteLabels = (quotes, requiredTrucks) => {
-  if (!requiredTrucks || requiredTrucks <= 0) return quotes; // Ensure `requiredTrucks` is valid
+async function assignInitialLabelsAndTrucks(rfq) {
+  try {
+    // Fetch all initial quotes
+    const initialQuotes = await Quote.find({ rfqId: rfq._id });
 
-  const sortedQuotes = [...quotes].sort((a, b) => a.price - b.price); // Sort by price ascending
-  let totalTrucks = 0;
+    // Assign labels based on price (ascending order)
+    const sortedQuotes = initialQuotes.sort((a, b) => a.price - b.price);
 
-  return sortedQuotes.map((quote, index) => {
-    if (totalTrucks < requiredTrucks) {
-      const trucksAllotted = Math.min(
-        quote.numberOfTrucks,
-        requiredTrucks - totalTrucks
-      );
-      totalTrucks += trucksAllotted;
-      return {
-        ...quote._doc, // Ensure all fields from the original quote are included
-        label: `L${index + 1}`,
-        actualTrucksAllotted: trucksAllotted,
-      };
+    // Assign labels and trucks
+    let totalTrucks = rfq.numberOfVehicles;
+    let totalTrucksAllocated = 0;
+
+    for (let i = 0; i < sortedQuotes.length; i++) {
+      const quote = sortedQuotes[i];
+      let label = `L${i + 1}`;
+      let trucksAllotted = 0;
+
+      if (i === 0) {
+        // L1 vendor
+        label = "L1";
+        trucksAllotted = Math.ceil(totalTrucks * 0.4); // 40% of total trucks
+        totalTrucksAllocated += trucksAllotted;
+        rfq.l1Price = quote.price;
+        const vendor = await Vendor.findOne({ vendorName: quote.vendorName });
+        rfq.l1VendorId = vendor._id;
+      } else {
+        // Allocate remaining trucks equally among other vendors
+        const remainingTrucks = totalTrucks - totalTrucksAllocated;
+        const numVendorsLeft = sortedQuotes.length - i;
+        trucksAllotted = Math.ceil(remainingTrucks / numVendorsLeft);
+        totalTrucksAllocated += trucksAllotted;
+      }
+
+      // Update the quote with label and trucks allotted
+      await Quote.findByIdAndUpdate(quote._id, {
+        label,
+        trucksAllotted,
+      });
     }
-    return {
-      ...quote._doc,
-      label: "-",
-      actualTrucksAllotted: 0,
-    };
-  });
-};
+  } catch (error) {
+    console.error("Error assigning labels and trucks:", error);
+  }
+}
+
+async function sendInitialPhaseEmails(rfq) {
+  try {
+    const accessTokenResponse = await oAuth2Client.getAccessToken();
+    const accessToken = accessTokenResponse.token;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        type: "OAuth2",
+        user: "aarnavsingh836@gmail.com",
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        refreshToken: REFRESH_TOKEN,
+        accessToken: accessToken,
+      },
+    });
+
+    // Notify L1 vendor
+    if (rfq.l1VendorId) {
+      const l1Vendor = await Vendor.findById(rfq.l1VendorId);
+      const mailOptions = {
+        from: "aarnavsingh836@gmail.com",
+        to: l1Vendor.email,
+        subject: `Congratulations! You are L1 for RFQ ${rfq.RFQNumber}`,
+        text: `
+          Dear ${l1Vendor.vendorName},
+
+          Congratulations! At the conclusion of the initial bidding phase, you are L1 and have been allotted ${Math.ceil(
+            rfq.numberOfVehicles * 0.4
+          )} trucks for RFQ ${rfq.RFQNumber}.
+
+          Best regards,
+          Premier Energies Team
+        `,
+      };
+      await transporter.sendMail(mailOptions);
+    }
+
+    // Notify other vendors
+    const initialQuotes = await Quote.find({ rfqId: rfq._id });
+    for (const quote of initialQuotes) {
+      if (quote.vendorName !== l1Vendor.vendorName) {
+        const vendor = await Vendor.findOne({ vendorName: quote.vendorName });
+        const mailOptions = {
+          from: "aarnavsingh836@gmail.com",
+          to: vendor.email,
+          subject: `Update Your Quote for RFQ ${rfq.RFQNumber}`,
+          text: `
+            Dear ${vendor.vendorName},
+
+            L1 Price is ${rfq.l1Price}. Please log in and update your quote to match it or provide your no regret price to get your assigned label and truck allocation.
+
+            Best regards,
+            Premier Energies Team
+          `,
+        };
+        await transporter.sendMail(mailOptions);
+      }
+    }
+  } catch (error) {
+    console.error("Error sending initial phase emails:", error);
+  }
+}
+
+// Endpoint to finalize RFQ
+app.post("/api/rfq/:id/finalize", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Ensure that the ID is valid for MongoDB ObjectID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid RFQ ID" });
+    }
+
+    // Fetch the RFQ
+    const rfq = await RFQ.findById(id);
+    if (!rfq) {
+      return res.status(404).json({ error: "RFQ not found" });
+    }
+
+    // Update the RFQ status to 'closed'
+    rfq.status = 'closed';
+    await rfq.save();
+
+    // Fetch all quotes for this RFQ
+    const quotes = await Quote.find({ rfqId: id });
+
+    // Get L1 vendor
+    const l1Vendor = await Vendor.findById(rfq.l1VendorId);
+
+    // Prepare email details for other vendors
+    const otherVendors = quotes.filter(q => q.vendorName !== l1Vendor.vendorName);
+
+    const accessTokenResponse = await oAuth2Client.getAccessToken();
+    const accessToken = accessTokenResponse.token;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        type: "OAuth2",
+        user: "aarnavsingh836@gmail.com",
+        clientId: CLIENT_ID,
+        clientSecret: CLIENT_SECRET,
+        refreshToken: REFRESH_TOKEN,
+        accessToken: accessToken,
+      },
+    });
+
+    for (const quote of otherVendors) {
+      const vendor = await Vendor.findOne({ vendorName: quote.vendorName });
+      if (vendor) {
+        const mailOptions = {
+          from: "aarnavsingh836@gmail.com",
+          to: vendor.email,
+          subject: `${rfq.RFQNumber} Finalized`,
+          text: `
+            Dear ${vendor.vendorName},
+
+            The ${rfq.RFQNumber} has been finalized. Your label is ${quote.label} and you have been allotted ${quote.trucksAllotted} trucks.
+
+            Thank you for your participation.
+
+            Best regards,
+            Premier Energies Team
+          `,
+        };
+        await transporter.sendMail(mailOptions);
+      }
+    }
+
+    res.status(200).json({ message: "RFQ finalized and emails sent to vendors." });
+
+  } catch (error) {
+    console.error("Error finalizing RFQ:", error);
+    res.status(500).json({ error: "Failed to finalize RFQ." });
+  }
+});
+
 
 // fetch pending RFQs for a vendor that the vendor has bid on
 app.get("/api/vendor-pending-rfqs/:vendorName", async (req, res) => {
@@ -1117,34 +1495,34 @@ app.get("/api/vendor-pending-rfqs/:vendorName", async (req, res) => {
     const quotes = await Quote.find({ vendorName });
     const rfqIds = quotes.map((quote) => quote.rfqId);
 
-    // Find RFQs based on the fetched RFQ IDs
+    // Find RFQs that the vendor bid on and have status 'closed'
     const rfqs = await RFQ.find({
       _id: { $in: rfqIds },
-      status: { $ne: "completed" }, // Exclude RFQs marked as "completed"
+      status: "closed",
     });
 
-    // Fetch all quotes for these RFQs and assign labels and trucks
+    // For each RFQ, find the vendor's quote and extract necessary details
     const pendingRFQs = await Promise.all(
       rfqs.map(async (rfq) => {
-        // Fetch all quotes for the current RFQ
-        const rfqQuotes = await Quote.find({ rfqId: rfq._id });
-
-        // Assign labels to the quotes
-        const labeledQuotes = assignQuoteLabels(
-          rfqQuotes,
-          rfq.numberOfVehicles
-        );
-
-        // Find the vendor's quote from the labeled quotes
-        const vendorQuote = labeledQuotes.find(
-          (quote) => quote.vendorName === vendorName
-        );
+        // Fetch the vendor's quote for this RFQ
+        const vendorQuote = await Quote.findOne({
+          rfqId: rfq._id,
+          vendorName,
+        });
 
         return {
           _id: rfq._id,
           RFQNumber: rfq.RFQNumber,
           label: vendorQuote ? vendorQuote.label : "-",
-          trucksAllotted: vendorQuote ? vendorQuote.actualTrucksAllotted : 0,
+          trucksAllotted: vendorQuote ? vendorQuote.trucksAllotted : 0,
+          // Additional RFQ details
+          originLocation: rfq.originLocation,
+          dropLocationState: rfq.dropLocationState,
+          dropLocationDistrict: rfq.dropLocationDistrict,
+          vehicleType: rfq.vehicleType,
+          additionalVehicleDetails: rfq.additionalVehicleDetails,
+          vehiclePlacementBeginDate: rfq.vehiclePlacementBeginDate,
+          vehiclePlacementEndDate: rfq.vehiclePlacementEndDate,
         };
       })
     );
@@ -1156,65 +1534,55 @@ app.get("/api/vendor-pending-rfqs/:vendorName", async (req, res) => {
   }
 });
 
-// accept RFQ by Vendor
-app.post("/api/accept-rfq", async (req, res) => {
-  const { rfqId, vendorName } = req.body;
 
+// Endpoint to update a quote's price and trucksAllotted (for factory user)
+app.put("/api/quote/factory/:quoteId", async (req, res) => {
   try {
-    // Update RFQ status or perform any necessary updates
-    const rfq = await RFQ.findById(rfqId);
+    const { quoteId } = req.params;
+    const { price, trucksAllotted, label } = req.body;
+
+    // Find the quote
+    const existingQuote = await Quote.findById(quoteId);
+    if (!existingQuote) {
+      return res.status(404).json({ error: "Quote not found" });
+    }
+
+    // Find the RFQ to check status
+    const rfq = await RFQ.findById(existingQuote.rfqId);
     if (!rfq) {
-      return res.status(404).json({ error: "RFQ not found." });
+      return res.status(404).json({ error: "RFQ not found" });
     }
 
-    // Send confirmation emails to both vendor and admin
-    const vendor = await Vendor.findOne({ vendorName });
-    if (vendor) {
-      const accessTokenResponse = await oAuth2Client.getAccessToken();
-      const accessToken = accessTokenResponse.token;
-
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          type: "OAuth2",
-          user: "aarnavsingh836@gmail.com",
-          clientId: CLIENT_ID,
-          clientSecret: CLIENT_SECRET,
-          refreshToken: REFRESH_TOKEN,
-          accessToken: accessToken,
-        },
-      });
-
-      // Send email to Vendor
-      await transporter.sendMail({
-        from: "aarnavsingh836@gmail.com",
-        to: vendor.email,
-        subject: "RFQ Acceptance Confirmation",
-        text: `You have successfully accepted the RFQ ${rfq.RFQNumber}. Thank you!`,
-      });
-
-      // Send email to Admin
-      await transporter.sendMail({
-        from: "aarnavsingh836@gmail.com",
-        to: "aarnavsingh836@gmail.com", // Admin email
-        subject: "RFQ Accepted by Vendor",
-        text: `Vendor ${vendorName} has accepted the RFQ ${rfq.RFQNumber}.`,
-      });
-
-      res
-        .status(200)
-        .json({ success: true, message: "RFQ accepted and emails sent." });
-    } else {
-      res.status(404).json({ error: "Vendor not found." });
+    if (rfq.status === "closed") {
+      return res
+        .status(400)
+        .json({ error: "Cannot update quote. RFQ is closed." });
     }
+
+    // Update the quote
+    const updatedQuote = await Quote.findByIdAndUpdate(
+      quoteId,
+      {
+        price,
+        trucksAllotted,
+        label,
+      },
+      { new: true }
+    );
+
+    res
+      .status(200)
+      .json({ message: "Quote updated successfully", updatedQuote });
   } catch (error) {
-    console.error("Error accepting RFQ:", error);
-    res.status(500).json({ error: "Failed to accept RFQ." });
+    console.error("Error updating quote:", error);
+    res.status(500).json({ error: "Failed to update quote" });
   }
 });
 
+
+
 // Fetch all closed RFQs (for all vendors)
-app.get("/api/closed-rfqs", async (req, res) => {
+{/*app.get("/api/closed-rfqs", async (req, res) => {
   try {
     // Fetch all RFQs with status "closed"
     const rfqs = await RFQ.find({ status: "closed" });
@@ -1247,7 +1615,7 @@ app.get("/api/closed-rfqs", async (req, res) => {
     console.error("Error fetching closed RFQs:", error);
     res.status(500).json({ error: "Failed to fetch closed RFQs." });
   }
-});
+}); */}
 
 // function to send participation reminder emails to selected vendors
 async function sendParticipationReminderEmail(rfqId, selectedVendorIds) {
@@ -1292,7 +1660,7 @@ async function sendParticipationReminderEmail(rfqId, selectedVendorIds) {
       const mailOptions = {
         from: "aarnavsingh836@gmail.com",
         to: vendorEmails.join(", "),
-        subject: `Reminder: Participation for RFQ ${rfq.RFQNumber}`,
+        subject: `Reminder: Participation for ${rfq.RFQNumber}`,
         html: `
           <p>Dear Vendor,</p>
           <p>This is a reminder to participate in the RFQ process for RFQ Number: <strong>${rfq.RFQNumber}</strong>.</p>
@@ -1350,39 +1718,42 @@ app.post("/api/send-reminder", async (req, res) => {
 });
 
 // Function to check and update RFQ status based on the closing date and time
-const updateRFQStatusBasedOnClosingDate = async () => {
+const updateRFQStatuses = async () => {
   try {
     const now = moment().tz("Asia/Kolkata");
-    const rfqs = await RFQ.find({ status: "open" });
+    const rfqs = await RFQ.find();
 
     for (const rfq of rfqs) {
-      if (!rfq.RFQClosingDate || !rfq.RFQClosingTime) {
-        console.warn(`RFQ ${rfq.RFQNumber} is missing closing date or time.`);
-        continue;
-      }
+      if (rfq.status === "initial" && now.isAfter(rfq.initialQuoteEndTime)) {
+        // Transition from 'initial' to 'evaluation'
+        rfq.status = "evaluation";
 
-      const closingDateTime = moment.tz(
-        `${moment(rfq.RFQClosingDate).format("YYYY-MM-DD")}T${
-          rfq.RFQClosingTime
-        }:00`,
-        "Asia/Kolkata"
-      );
+        // Assign labels and trucks based on initial quotes
+        await assignInitialLabelsAndTrucks(rfq);
 
-      if (now.isAfter(closingDateTime)) {
+        // Notify vendors
+        await sendInitialPhaseEmails(rfq);
+
+        await rfq.save();
+      } else if (
+        rfq.status === "evaluation" &&
+        now.isAfter(rfq.evaluationEndTime)
+      ) {
+        // Transition from 'evaluation' to 'closed'
         rfq.status = "closed";
         await rfq.save();
-        console.log(`RFQ ${rfq.RFQNumber} has been updated to 'closed'.`);
       }
     }
   } catch (error) {
-    console.error("Error updating RFQ status based on closing date:", error);
+    console.error("Error updating RFQ statuses:", error);
   }
 };
 
-cron.schedule("* * * * *", updateRFQStatusBasedOnClosingDate);
+// Schedule the status updates
+cron.schedule("* * * * *", updateRFQStatuses);
 
 // function to send reminder emails to vendors
-async function sendReminderEmails() {
+{/*async function sendReminderEmails() {
   const now = new Date();
   console.log(`Cron job started at ${now.toISOString()}`);
 
@@ -1488,15 +1859,15 @@ async function sendReminderEmails() {
     // log an error if the cron job fails
     console.error("Error during the cron job execution:", error);
   }
-}
+} */}
 
 // schedule the job to run every minute for testing
-cron.schedule("*/720 * * * *", () => {
-  console.log("Cron job execution triggered");
-  sendReminderEmails();
-});
+//cron.schedule("*/720 * * * *", () => {
+//  console.log("Cron job execution triggered");
+//  sendReminderEmails();
+//});
 
-console.log("Cron job scheduled to run every minute");
+// console.log("Cron job scheduled to run every minute");
 
 // start server
 const PORT = process.env.PORT || 5000;

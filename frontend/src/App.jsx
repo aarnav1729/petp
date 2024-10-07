@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import Login from "./components/Login";
 import NewRFQForm from "./components/NewRFQForm";
 import RFQList from "./components/RFQList";
@@ -12,9 +17,10 @@ import AuctionRoom from "./components/AuctionRoom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import PendingRFQs from "./components/PendingRFQs";
-import ClosedRFQs from "./components/ClosedRFQs";
 import Registering from "./components/Registering";
 import Accounts from "./components/Accounts";
+import FactoryRFQList from "./components/FactoryRFQList";
+import EvalRFQs from "./components/EvalRFQs";
 
 const App = () => {
   const [role, setRole] = useState(null);
@@ -52,8 +58,8 @@ const App = () => {
                         role === "admin"
                           ? "/rfq-list"
                           : role === "factory"
-                            ? "/new-rfq"
-                            : "/vendor-rfq-list"
+                          ? "/factory-rfq-list"
+                          : "/vendor-rfq-list"
                       }
                     />
                   }
@@ -63,12 +69,18 @@ const App = () => {
                   <>
                     <Route path="/rfq-list" element={<RFQList />} />
                     <Route path="/vendor-list" element={<VendorList />} />
-                    <Route path="/active-auctions" element={<ActiveAuctions />} />
+                    <Route
+                      path="/active-auctions"
+                      element={<ActiveAuctions />}
+                    />
                     <Route
                       path="/auction-room/:rfqId"
                       element={<AuctionRoom username={username} role={role} />}
                     />
-                    <Route path="/rfq/:rfqId" element={<RFQDetailsPage userRole={role} />} />
+                    <Route
+                      path="/rfq/:rfqId"
+                      element={<RFQDetailsPage userRole={role} />}
+                    />
                     <Route path="/accounts" element={<Accounts />} />
                   </>
                 )}
@@ -83,21 +95,24 @@ const App = () => {
                       path="/vendor-quote-form/:rfqId"
                       element={<VendorQuoteForm username={username} />}
                     />
-                    <Route path="/active-auctions" element={<ActiveAuctions />} />
                     <Route
-                      path="/auction-room/:rfqId"
-                      element={<AuctionRoom username={username} role={role} />}
+                      path="/pending-rfqs"
+                      element={<PendingRFQs username={username} />}
                     />
-                    <Route path="/pending-rfqs" element={<PendingRFQs username={username} />} />
                   </>
                 )}
 
                 {role === "factory" && (
                   <>
                     <Route path="/new-rfq" element={<NewRFQForm />} />
-                    <Route path="/rfq-list" element={<RFQList />} />
-                    <Route path="/rfq/:rfqId" element={<RFQDetailsPage userRole={role} />} />
-                    <Route path="/closed-rfqs" element={<ClosedRFQs />} />
+                    <Route
+                      path="/factory-rfq-list"
+                      element={<FactoryRFQList />}
+                    />
+                    <Route
+                      path="/eval-rfq/:rfqId"
+                      element={<EvalRFQs userRole={role} />}
+                    />
                   </>
                 )}
                 <Route path="*" element={<Navigate to="/" />} />

@@ -9,6 +9,7 @@ const RFQDetailsPage = ({ userRole }) => {
   const [quotes, setQuotes] = useState([]);
   const [activeTab, setActiveTab] = useState("details");
   const [vendors, setVendors] = useState([]);
+  const [rfqStatus, setRfqStatus] = useState("");
 
   // State variables for vendor selections and modals
   const [reminderSelectedVendors, setReminderSelectedVendors] = useState([]);
@@ -21,12 +22,40 @@ const RFQDetailsPage = ({ userRole }) => {
   const [isSending, setIsSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
 
+  useEffect(() => {
+    fetchRFQDetails();
+
+    const fetchQuotes = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:5000/api/quotes/${rfqId}`
+        );
+        setQuotes(response.data);
+      } catch (error) {
+        console.error("Error fetching quotes:", error);
+      }
+    };
+
+    const fetchVendors = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/vendors");
+        setVendors(response.data);
+      } catch (error) {
+        console.error("Error fetching vendors:", error);
+      }
+    };
+
+    fetchQuotes();
+    fetchVendors();
+  }, [rfqId]);
+
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `https://petp.onrender.com/api/rfq/${rfqId}`
+        `http://localhost:5000/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
+      setRfqStatus(response.data.status); // Set rfqStatus here
 
       // Initialize the reminder selected vendors with those already selected in the RFQ
       if (response.data.selectedVendors) {
@@ -38,35 +67,6 @@ const RFQDetailsPage = ({ userRole }) => {
       console.error("Error fetching RFQ details:", error);
     }
   };
-
-  useEffect(() => {
-    fetchRFQDetails();
-
-    const fetchQuotes = async () => {
-      try {
-        const response = await axios.get(
-          `https://petp.onrender.com/api/quotes/${rfqId}`
-        );
-        setQuotes(response.data);
-      } catch (error) {
-        console.error("Error fetching quotes:", error);
-      }
-    };
-
-    const fetchVendors = async () => {
-      try {
-        const response = await axios.get(
-          "https://petp.onrender.com/api/vendors"
-        );
-        setVendors(response.data);
-      } catch (error) {
-        console.error("Error fetching vendors:", error);
-      }
-    };
-
-    fetchQuotes();
-    fetchVendors();
-  }, [rfqId]);
 
   const reminderVendors = vendors.filter(
     (vendor) =>
@@ -107,7 +107,7 @@ const RFQDetailsPage = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        "https://petp.onrender.com/api/send-reminder",
+        "http://localhost:5000/api/send-reminder",
         {
           rfqId,
           vendorIds: reminderSelectedVendors,
@@ -128,7 +128,7 @@ const RFQDetailsPage = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        `https://petp.onrender.com/api/rfq/${rfqId}/add-vendors`,
+        `http://localhost:5000/api/rfq/${rfqId}/add-vendors`,
         {
           vendorIds: addVendorsSelectedVendors,
         }
@@ -170,6 +170,27 @@ const RFQDetailsPage = ({ userRole }) => {
     });
   };
 
+  const handleTrucksAllottedChange = (quoteId, value) => {
+    setQuotes((prevQuotes) =>
+      prevQuotes.map((quote) =>
+        quote._id === quoteId ? { ...quote, trucksAllotted: value } : quote
+      )
+    );
+  };
+
+  const updateTrucksAllotted = async (quoteId) => {
+    try {
+      const quoteToUpdate = quotes.find((quote) => quote._id === quoteId);
+      await axios.put(`http://localhost:5000/api/quote/${quoteId}`, {
+        ...quoteToUpdate,
+      });
+      alert("Trucks allotted updated successfully.");
+    } catch (error) {
+      console.error("Error updating trucks allotted:", error);
+      alert("Failed to update trucks allotted.");
+    }
+  };
+  
   const labeledQuotes = rfqDetails
     ? assignQuoteLabels(quotes, rfqDetails?.numberOfVehicles)
     : [];
@@ -268,59 +289,6 @@ const RFQDetailsPage = ({ userRole }) => {
                 </tbody>
               </table>
             </div>
-
-            <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(rfqDetails)
-                .filter(
-                  ([key]) =>
-                    ![
-                      "_id",
-                      "__v",
-                      "selectedVendors",
-                      "vendorActions",
-                      "createdAt",
-                      "updatedAt",
-                    ].includes(key)
-                )
-                .map(([key, value]) => {
-                  // Format the key to have spaces before uppercase letters and capitalize
-                  const formattedKey = key
-                    .replace(/([A-Z])/g, " $1")
-                    .replace(/^./, (str) => str.toUpperCase());
-
-                  // Format the value based on its type
-                  let formattedValue;
-                  if (value === null || value === undefined) {
-                    formattedValue = "N/A";
-                  } else if (typeof value === "string") {
-                    formattedValue = value;
-                  } else if (typeof value === "number") {
-                    formattedValue = value.toString();
-                  } else if (typeof value === "boolean") {
-                    formattedValue = value ? "Yes" : "No";
-                  } else if (Array.isArray(value)) {
-                    formattedValue = value.join(", ");
-                  } else if (
-                    typeof value === "object" &&
-                    value instanceof Date
-                  ) {
-                    formattedValue = new Date(value).toLocaleDateString();
-                  } else if (typeof value === "object") {
-                    formattedValue = JSON.stringify(value);
-                  } else {
-                    formattedValue = value.toString();
-                  }
-
-                  return (
-                    <div key={key} className="mt-1">
-                      <dt className="inline font-medium">{formattedKey}:</dt>
-                      <dd className="inline ml-2 text-black">
-                        {formattedValue}
-                      </dd>
-                    </div>
-                  );
-                })}
-            </dl>
           </div>
         ) : (
           <p className="text-center text-black">Loading RFQ details...</p>
@@ -403,6 +371,48 @@ const RFQDetailsPage = ({ userRole }) => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Render labels and allocations if RFQ is in evaluation or closed */}
+          {(rfqStatus === "evaluation" || rfqStatus === "closed") && (
+            <div>
+              <h3 className="font-bold mb-2">
+                Vendor Labels and Truck Allocations
+              </h3>
+              {/* Display the quotes with labels and trucksAllotted */}
+              {quotes.map((quote) => (
+                <div key={quote._id} className="border p-4 mb-2">
+                  <p>Vendor: {quote.vendorName}</p>
+                  <p>Label: {quote.label || "-"}</p>
+                  <p>Price: {quote.price}</p>
+                  <p>Trucks Allotted: {quote.trucksAllotted || 0}</p>
+                  {/* If in evaluation, allow factory user to update L2 and L3 allocations */}
+                  {rfqStatus === "evaluation" &&
+                    userRole === "factory" &&
+                    quote.label !== "L1" && (
+                      <div className="mt-2">
+                        <input
+                          type="number"
+                          value={quote.trucksAllotted || 0}
+                          onChange={(e) =>
+                            handleTrucksAllottedChange(
+                              quote._id,
+                              e.target.value
+                            )
+                          }
+                          className="p-1 border"
+                        />
+                        <button
+                          onClick={() => updateTrucksAllotted(quote._id)}
+                          className="ml-2 bg-blue-500 text-white px-2 py-1 rounded"
+                        >
+                          Update
+                        </button>
+                      </div>
+                    )}
+                </div>
+              ))}
             </div>
           )}
 
