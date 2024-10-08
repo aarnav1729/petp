@@ -26,7 +26,8 @@ app.use(cors());
 app.use(express.json());
 
 // socket.io configuration
-{/*io.on("connection", (socket) => {
+{
+  /*io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
   socket.on(
@@ -86,7 +87,8 @@ app.use(express.json());
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
   });
-});*/}
+});*/
+}
 
 // connect to monogdb
 mongoose
@@ -161,45 +163,47 @@ async function sendRFQEmail(rfqData, selectedVendorIds) {
         "__v",
       ];
 
-      const mailOptions = {
-        from: "aarnavsingh836@gmail.com",
-        to: vendorEmails.join(", "),
-        subject: "New RFQ Posted - Submit Initial Quote within 24 hours",
-        html: `
-              <p>Dear Vendor,</p>
-              <p>You are one of the selected vendors for ${
-                rfqData.RFQNumber
-              }. You have 24 hours to submit an initial quote. Only vendors who submit an initial quote will be allowed to update their quote during the evaluation period.</p>
-              <p>Please log in to your account to submit your quote.</p>
-              <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; inline-size: 100%;">
-                <thead>
-                  <tr>
-                    <th style="background-color: #f2f2f2;">Field</th>
-                    <th style="background-color: #f2f2f2;">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${Object.entries(rfqData)
-                    .filter(([key]) => !excludedFields.includes(key))
-                    .map(
-                      ([key, value]) => `
+      for (const vendor of vendorsToEmail) {
+        const mailOptions = {
+          from: "aarnavsingh836@gmail.com",
+          to: vendor.email,
+          subject: "New RFQ Posted - Submit Initial Quote within 24 hours",
+          html: `
+                <p>Dear Vendor,</p>
+                <p>You are one of the selected vendors for ${
+                  rfqData.RFQNumber
+                }. You have 24 hours to submit an initial quote. Only vendors who submit an initial quote will be allowed to update their quote during the evaluation period.</p>
+                <p>Please log in to your account to submit your quote.</p>
+                <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; inline-size: 100%;">
+                  <thead>
                     <tr>
-                      <td style="padding: 8px; text-align: start;">${key
-                        .replace(/([A-Z])/g, " $1")
-                        .replace(/^./, (str) => str.toUpperCase())}</td>
-                      <td style="padding: 8px; text-align: start;">${value}</td>
+                      <th style="background-color: #f2f2f2;">Field</th>
+                      <th style="background-color: #f2f2f2;">Value</th>
                     </tr>
-                  `
-                    )
-                    .join("")}
-                </tbody>
-              </table>
-              <p>We look forward to receiving your quote.</p>
-              <p>Best regards,<br/>Premier Energies Limited</p>
-            `,
-      };
-      await transporter.sendMail(mailOptions);
-      console.log("Emails sent to selected vendors.");
+                  </thead>
+                  <tbody>
+                    ${Object.entries(rfqData)
+                      .filter(([key]) => !excludedFields.includes(key))
+                      .map(
+                        ([key, value]) => `
+                      <tr>
+                        <td style="padding: 8px; text-align: start;">${key
+                          .replace(/([A-Z])/g, " $1")
+                          .replace(/^./, (str) => str.toUpperCase())}</td>
+                        <td style="padding: 8px; text-align: start;">${value}</td>
+                      </tr>
+                    `
+                      )
+                      .join("")}
+                  </tbody>
+                </table>
+                <p>We look forward to receiving your quote.</p>
+                <p>Best regards,<br/>Premier Energies Limited</p>
+              `,
+        };
+        await transporter.sendMail(mailOptions);
+        console.log("Emails sent to selected vendors.");
+      }
       return { success: true };
     } else {
       console.log("No selected vendors to send emails to.");
@@ -231,8 +235,8 @@ const quoteSchema = new mongoose.Schema(
     message: String,
     numberOfTrucks: Number,
     validityPeriod: String,
-    label: String, 
-    trucksAllotted: Number, 
+    label: String,
+    trucksAllotted: Number,
   },
   { timestamps: true }
 );
@@ -495,7 +499,8 @@ app.post("/api/approve-account/:id", async (req, res) => {
 });
 
 // endpoint for fetching active auctions
-{/* app.get("/api/active-auctions", async (req, res) => {
+{
+  /* app.get("/api/active-auctions", async (req, res) => {
   try {
     // get the current time in IST
     const now = moment().tz("Asia/Kolkata");
@@ -549,7 +554,8 @@ app.post("/api/approve-account/:id", async (req, res) => {
     console.error("Error fetching active auctions:", error);
     res.status(500).json({ error: "Failed to fetch active auctions" });
   }
-});*/}
+});*/
+}
 
 // endpoint for vendor registration
 app.post("/api/register", async (req, res) => {
@@ -748,7 +754,6 @@ app.post("/api/rfq", async (req, res) => {
     const initialQuoteEndTime = now.clone().add(10, "minutes").toDate();
     // Set evaluation period to 2 minutes after initial period
     const evaluationEndTime = now.clone().add(999, "minutes").toDate();
-    
 
     // Fetch the last created RFQ to get the current highest RFQNumber
     const lastRFQ = await RFQ.findOne().sort({ _id: -1 });
@@ -1428,7 +1433,7 @@ app.post("/api/rfq/:id/finalize", async (req, res) => {
     }
 
     // Update the RFQ status to 'closed'
-    rfq.status = 'closed';
+    rfq.status = "closed";
     await rfq.save();
 
     // Fetch all quotes for this RFQ
@@ -1438,7 +1443,9 @@ app.post("/api/rfq/:id/finalize", async (req, res) => {
     const l1Vendor = await Vendor.findById(rfq.l1VendorId);
 
     // Prepare email details for other vendors
-    const otherVendors = quotes.filter(q => q.vendorName !== l1Vendor.vendorName);
+    const otherVendors = quotes.filter(
+      (q) => q.vendorName !== l1Vendor.vendorName
+    );
 
     const accessTokenResponse = await oAuth2Client.getAccessToken();
     const accessToken = accessTokenResponse.token;
@@ -1477,14 +1484,14 @@ app.post("/api/rfq/:id/finalize", async (req, res) => {
       }
     }
 
-    res.status(200).json({ message: "RFQ finalized and emails sent to vendors." });
-
+    res
+      .status(200)
+      .json({ message: "RFQ finalized and emails sent to vendors." });
   } catch (error) {
     console.error("Error finalizing RFQ:", error);
     res.status(500).json({ error: "Failed to finalize RFQ." });
   }
 });
-
 
 // fetch pending RFQs for a vendor that the vendor has bid on
 app.get("/api/vendor-pending-rfqs/:vendorName", async (req, res) => {
@@ -1534,7 +1541,6 @@ app.get("/api/vendor-pending-rfqs/:vendorName", async (req, res) => {
   }
 });
 
-
 // Endpoint to update a quote's price and trucksAllotted (for factory user)
 app.put("/api/quote/factory/:quoteId", async (req, res) => {
   try {
@@ -1579,10 +1585,9 @@ app.put("/api/quote/factory/:quoteId", async (req, res) => {
   }
 });
 
-
-
 // Fetch all closed RFQs (for all vendors)
-{/*app.get("/api/closed-rfqs", async (req, res) => {
+{
+  /*app.get("/api/closed-rfqs", async (req, res) => {
   try {
     // Fetch all RFQs with status "closed"
     const rfqs = await RFQ.find({ status: "closed" });
@@ -1615,7 +1620,8 @@ app.put("/api/quote/factory/:quoteId", async (req, res) => {
     console.error("Error fetching closed RFQs:", error);
     res.status(500).json({ error: "Failed to fetch closed RFQs." });
   }
-}); */}
+}); */
+}
 
 // function to send participation reminder emails to selected vendors
 async function sendParticipationReminderEmail(rfqId, selectedVendorIds) {
@@ -1753,7 +1759,8 @@ const updateRFQStatuses = async () => {
 cron.schedule("* * * * *", updateRFQStatuses);
 
 // function to send reminder emails to vendors
-{/*async function sendReminderEmails() {
+{
+  /*async function sendReminderEmails() {
   const now = new Date();
   console.log(`Cron job started at ${now.toISOString()}`);
 
@@ -1859,7 +1866,8 @@ cron.schedule("* * * * *", updateRFQStatuses);
     // log an error if the cron job fails
     console.error("Error during the cron job execution:", error);
   }
-} */}
+} */
+}
 
 // schedule the job to run every minute for testing
 //cron.schedule("*/720 * * * *", () => {
