@@ -1264,6 +1264,7 @@ const NewRFQForm = () => {
             <option value="">Select Additional Vehicle Details</option>
             <option value="20 Feet Container">20 Feet Container</option>
             <option value="40 Feet Container">40 Feet Container</option>
+            <option value="40 Feet Container">40 Feet HBT Open Trailer</option>
             <option value="40 HQ Container">40 HQ Container</option>
             <option value="32MXL Container">32MXL Container</option>
             <option value="32SXL Container">32SXL Container</option>
