@@ -751,7 +751,7 @@ app.post("/api/rfq", async (req, res) => {
   try {
     const now = moment().tz("Asia/Kolkata");
     // For testing, set initial quote period to 1 minute
-    const initialQuoteEndTime = now.clone().add(10, "minutes").toDate();
+    const initialQuoteEndTime = now.clone().add(1440, "minutes").toDate();
     // Set evaluation period to 2 minutes after initial period
     const evaluationEndTime = now.clone().add(999, "minutes").toDate();
 
