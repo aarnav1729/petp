@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 
-const EvalRFQs = ({ userRole }) => {
+const EvalRFQs = ({ userRole, username }) => {
   const { rfqId } = useParams();
   const navigate = useNavigate();
   const [rfqDetails, setRfqDetails] = useState(null);
@@ -250,7 +250,7 @@ const EvalRFQs = ({ userRole }) => {
                       Number of Trucks Offered
                     </th>
 
-                    {isInitialQuotePeriodOver && (
+                    {(isInitialQuotePeriodOver || (userRole === 'factory' && username === 'aarnav')) && (
                       <>
                         <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                           Quote
@@ -277,7 +277,7 @@ const EvalRFQs = ({ userRole }) => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {quote.numberOfTrucks}
                       </td>
-                      {isInitialQuotePeriodOver && (
+                    {(isInitialQuotePeriodOver || (userRole === 'factory' && username === 'aarnav')) && (
                         <>
                           {/* Price Input */}
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
@@ -340,7 +340,7 @@ const EvalRFQs = ({ userRole }) => {
               </table>
             </div>
 
-            {!isInitialQuotePeriodOver && (
+             {(isInitialQuotePeriodOver || (userRole === 'factory' && 'username' === 'aarnav')) && (
               <div className="mt-4 text-center">
                 <p className="text-red-600 font-bold">
                   Labels, quotes, and trucks allotted will be available after
