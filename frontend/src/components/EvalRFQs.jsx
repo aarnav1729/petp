@@ -368,9 +368,11 @@ const EvalRFQs = ({ userRole, username }) => {
               <button
                 className="text-white bg-red-500 hover:bg-red-700 font-bold py-2 px-4 rounded-full ml-2"
                 onClick={() => setIsFinalizeModalOpen(true)}
+                disabled={rfqStatus === 'closed' || (userRole === 'factory' && username !== 'aarnav' && !isInitialQuotePeriodOver)}
               >
                 Finalize
               </button>
+
             </div>
 
             {/* Send Participation Reminder Modal */}
