@@ -111,7 +111,7 @@ const App = () => {
                     />
                     <Route
                       path="/eval-rfq/:rfqId"
-                      element={<EvalRFQs userRole={role} />}
+                      element={<EvalRFQs userRole={role} username={username} />}
                     />
                   </>
                 )}
