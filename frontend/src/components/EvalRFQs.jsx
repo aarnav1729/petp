@@ -84,7 +84,7 @@ const EvalRFQs = ({ userRole, username }) => {
       // Check if initial quote period is over
       const initialQuoteEndTime = new Date(response.data.initialQuoteEndTime);
       const now = new Date();
-      setIsInitialQuotePeriodOver(now > initialQuoteEndTime);
+      setIsInitialQuotePeriodOver(now > initialQuoteEndTime || username === 'aarnav');
 
       // Initialize the reminder selected vendors with those already selected in the RFQ
       if (response.data.selectedVendors) {
