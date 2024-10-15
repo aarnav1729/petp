@@ -9,6 +9,35 @@ const moment = require("moment-timezone");
 const http = require("http");
 const { Server } = require("socket.io");
 
+// outlook emails
+const { Client } = require("@microsoft/microsoft-graph-client");
+const { ClientSecretCredential } = require("@azure/identity");
+
+// outlook credentials
+const CLIENT_ID = "5a58e660-dc7b-49ec-a48c-1fffac02f721";
+const CLIENT_SECRET = "6_I8Q~U7IbS~NERqNeszoCRs2kETiO1Yc3cXAaup";
+const TENANT_ID = "1c3de7f3-f8d1-41d3-8583-2517cf3ba3b1";
+const SENDER_EMAIL = "leaf@premierenergies.com";
+
+// creating an authentication credential for microsoft graph apis
+const credential = new ClientSecretCredential(
+  TENANT_ID,
+  CLIENT_ID,
+  CLIENT_SECRET
+);
+
+// creating a microsoft graph client
+const client = Client.initWithMiddleware({
+  authProvider: {
+    getAccessToken: async () => {
+      const tokenResponse = await credential.getToken(
+        "https://graph.microsoft.com/.default"
+      );
+      return tokenResponse.token;
+    },
+  },
+});
+
 // create express app
 const app = express();
 const server = http.createServer(app);
@@ -97,78 +126,54 @@ mongoose
     {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 30000, 
+      socketTimeoutMS: 45000,
     }
   )
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Oauth2 client setup
-const CLIENT_ID =
-  "146143405091-si7f6sctcsjmcnkvc0o6tvukqaallcop.apps.googleusercontent.com";
-const CLIENT_SECRET = "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";
-const REDIRECT_URI = "https://developers.google.com/oauthplayground";
-const REFRESH_TOKEN =
-  "1//04fJkb44IIJmZCgYIARAAGAQSNwF-L9Ir-S522XB9rNyof_tXH5GsDOEZbKqkVKWI4lffSF4TTat5sJJH86o1U2bvgDxtBhXXMJU";
-const oAuth2Client = new google.auth.OAuth2(
-  CLIENT_ID,
-  CLIENT_SECRET,
-  REDIRECT_URI
-);
-oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
-
 // function to send email on rfq creation
 async function sendRFQEmail(rfqData, selectedVendorIds) {
+  const excludedFields = [
+    "_id",
+    "budgetedPriceBySalesDept",
+    "maxAllowablePrice",
+    "customerName",
+    "selectedVendors",
+    "vendorActions",
+    "createdAt",
+    "updatedAt",
+    "__v",
+    "eReverseTime",
+    "eReverseDate",
+    "sapOrder",
+    "status",
+    "eReverseToggle",
+  ];
+
   try {
     let vendorsToEmail;
 
     if (selectedVendorIds && selectedVendorIds.length > 0) {
-      // Fetch only the selected vendors
       vendorsToEmail = await Vendor.find(
         { _id: { $in: selectedVendorIds } },
         "email vendorName"
       );
     } else {
-      // Default to no vendors if none were selected
       vendorsToEmail = [];
     }
 
     const vendorEmails = vendorsToEmail.map((vendor) => vendor.email);
 
     if (vendorEmails.length > 0) {
-      const accessTokenResponse = await oAuth2Client.getAccessToken();
-      const accessToken = accessTokenResponse.token;
-
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          type: "OAuth2",
-          user: "aarnavsingh836@gmail.com",
-          clientId: CLIENT_ID,
-          clientSecret: CLIENT_SECRET,
-          refreshToken: REFRESH_TOKEN,
-          accessToken: accessToken,
-        },
-      });
-
-      // Fields to exclude from the email
-      const excludedFields = [
-        "_id",
-        "budgetedPriceBySalesDept",
-        "maxAllowablePrice",
-        "customerName",
-        "selectedVendors",
-        "vendorActions",
-        "createdAt",
-        "updatedAt",
-        "__v",
-      ];
-
       for (const vendor of vendorsToEmail) {
-        const mailOptions = {
-          from: "aarnavsingh836@gmail.com",
-          to: vendor.email,
-          subject: "New RFQ Posted - Submit Initial Quote within 24 hours",
-          html: `
+        const emailContent = {
+          message: {
+            subject: "New RFQ Posted - Submit Initial Quote within 24 hours",
+            body: {
+              contentType: "HTML",
+              content: `
                 <p>Dear Vendor,</p>
                 <p>You are one of the selected vendors for ${
                   rfqData.RFQNumber
@@ -200,9 +205,24 @@ async function sendRFQEmail(rfqData, selectedVendorIds) {
                 <p>We look forward to receiving your quote.</p>
                 <p>Best regards,<br/>Premier Energies Limited</p>
               `,
+            },
+            toRecipients: [
+              {
+                emailAddress: {
+                  address: vendor.email,
+                },
+              },
+            ],
+            from: {
+              emailAddress: {
+                address: "leaf@premierenergies.com",
+              },
+            },
+          },
         };
-        await transporter.sendMail(mailOptions);
-        console.log("Emails sent to selected vendors.");
+
+        await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
+        console.log(`Email sent to ${vendor.email}`);
       }
       return { success: true };
     } else {
@@ -308,7 +328,7 @@ const RFQ = mongoose.model("RFQ", rfqSchema);
 const verificationSchema = new mongoose.Schema({
   email: { type: String, required: true },
   otp: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 300 }, // expires after 5 minutes
+  createdAt: { type: Date, default: Date.now, expires: 300 }, 
 });
 
 const Verification = mongoose.model("Verification", verificationSchema);
@@ -327,30 +347,31 @@ app.post("/api/send-otp", async (req, res) => {
     const newVerification = new Verification({ email, otp });
     await newVerification.save();
 
-    // send the OTP email
-    const mailOptions = {
-      from: "aarnavsingh836@gmail.com",
-      to: email,
-      subject: "Your OTP for Registration",
-      text: `Your OTP for registration is: ${otp}. It is valid for 5 minutes.`,
+    // create the email content
+    const emailContent = {
+      message: {
+        subject: "Your OTP for Registration",
+        body: {
+          contentType: "Text",
+          content: `Your OTP for registration is: ${otp}. It is valid for 5 minutes.`
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: email
+            }
+          }
+        ],
+        from: {
+          emailAddress: {
+            address: SENDER_EMAIL
+          }
+        }
+      }
     };
 
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "aarnavsingh836@gmail.com",
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken,
-      },
-    });
-
-    await transporter.sendMail(mailOptions);
+    // send the email using Microsoft Graph API
+    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
 
     res.status(200).json({ success: true, message: "OTP sent to email." });
   } catch (error) {
@@ -358,6 +379,7 @@ app.post("/api/send-otp", async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to send OTP." });
   }
 });
+
 
 // endpoint to verify OTP
 app.post("/api/verify-otp", async (req, res) => {
@@ -393,7 +415,7 @@ app.post("/api/login", async (req, res) => {
       // return error response
       return res
         .status(401)
-        .json({ success: false, message: "Invalid admin credentials" });
+        .json({ success: false, message: "Invalid username or password" });
     }
   }
 
@@ -412,7 +434,7 @@ app.post("/api/login", async (req, res) => {
     } else {
       return res
         .status(401)
-        .json({ success: false, message: "Invalid credentials" });
+        .json({ success: false, message: "Invalid username or password" });
     }
   } catch (error) {
     console.error("Error during login:", error);
@@ -458,38 +480,39 @@ app.post("/api/approve-account/:id", async (req, res) => {
       await newVendor.save();
     }
 
-    // Send account approval email
-    const mailOptions = {
-      from: "aarnavsingh836@gmail.com",
-      to: user.email,
-      subject: "Account Approved",
-      text: `
-        Dear ${user.username},
+    // create the email content
+    const emailContent = {
+      message: {
+        subject: "Account Approved",
+        body: {
+          contentType: "Text",
+          content: `
+            Dear ${user.username},
+            
+            Congratulations! Your account has been approved by the admin.
+            You can now log in to the portal using your credentials.
 
-        Congratulations! Your account has been approved by the admin.
-        You can now log in to the portal using your credentials.
-
-        Best regards,
-        Premier Energies Team
-      `,
+            Best regards,
+            Premier Energies Team
+          `
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: user.email
+            }
+          }
+        ],
+        from: {
+          emailAddress: {
+            address: SENDER_EMAIL
+          }
+        }
+      }
     };
 
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "aarnavsingh836@gmail.com",
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken,
-      },
-    });
-
-    await transporter.sendMail(mailOptions);
+    // send the email using Microsoft Graph API
+    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
 
     res.status(200).json({ message: "User account approved and email sent." });
   } catch (error) {
@@ -497,6 +520,7 @@ app.post("/api/approve-account/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to approve user account" });
   }
 });
+
 
 // endpoint for fetching active auctions
 {
@@ -559,11 +583,8 @@ app.post("/api/approve-account/:id", async (req, res) => {
 
 // endpoint for vendor registration
 app.post("/api/register", async (req, res) => {
-  // extract the required fields from the request body
-  const { username, password, vendorName, email, contactNumber, role } =
-    req.body;
+  const { username, password, vendorName, email, contactNumber, role } = req.body;
 
-  // check if the username, password, vendorName, email, and contact number are provided
   try {
     const newUser = new User({
       username,
@@ -575,59 +596,53 @@ app.post("/api/register", async (req, res) => {
     });
     await newUser.save();
 
-    // send the welcome email
-    const mailOptions = {
-      from: "aarnavsingh836@gmail.com",
-      to: email,
-      subject: "Welcome to Premier Energies",
-      text: `
-        Dear ${username},
+    // create the email content
+    const emailContent = {
+      message: {
+        subject: "Welcome to Premier Energies",
+        body: {
+          contentType: "Text",
+          content: `
+            Dear ${username},
+            
+            Welcome to LEAF by Premier Energies! We're excited to have you onboard.
 
-        Welcome to LEAF by Premier Energies! We're excited to have you onboard.
+            Here are your login credentials:
+            Username: ${username}
+            Password: ${password}
 
-        Here are your login credentials:
-        Username: ${username}
-        Password: ${password}
+            Thank you for registering with us! Your account is currently pending admin approval.
+            You will be notified once your account has been approved.
 
-        Thank you for registering with us! Your account is currently pending admin approval.
-        You will be notified once your account has been approved.
-
-        Best regards,
-        Premier Energies Team
-      `,
+            Best regards,
+            Premier Energies Team
+          `
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: email
+            }
+          }
+        ],
+        from: {
+          emailAddress: {
+            address: SENDER_EMAIL
+          }
+        }
+      }
     };
 
-    // send the email using OAuth2
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
+    // send the email using Microsoft Graph API
+    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
 
-    // create the transporter instance
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "aarnavsingh836@gmail.com",
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken,
-      },
-    });
-
-    // send the email
-    await transporter.sendMail(mailOptions);
-
-    // return success response
     res.status(201).json({
       success: true,
-      message: "User registered successfully and welcome email sent.",
+      message: "User registered successfully and welcome email sent."
     });
   } catch (error) {
-    // log error if vendor registration fails
     console.error("Error registering vendor:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to register vendor." });
+    res.status(500).json({ success: false, message: "Failed to register vendor." });
   }
 });
 
@@ -668,7 +683,6 @@ app.post("/api/add-vendor", async (req, res) => {
 
     await newVendor.save();
 
-    // Also create a User entry
     const newUser = new User({
       username,
       password,
@@ -680,45 +694,43 @@ app.post("/api/add-vendor", async (req, res) => {
 
     await newUser.save();
 
-    // send the welcome email (if needed)
-    const mailOptions = {
-      from: "aarnavsingh836@gmail.com",
-      to: email,
-      subject: "Welcome to Leaf",
-      text: `
-          Dear ${username},
-    
-          Welcome to LEAF! We're excited to have you onboard.
-    
-          Here are your login credentials:
+    const emailContent = {
+      message: {
+        subject: "Welcome to Leaf",
+        body: {
+          contentType: "Text",
+          content: `
+            Dear ${username},
+
+            Welcome to LEAF by Premier Energies! We're excited to have you onboard.
+
+            Here are your login credentials:
             Username: ${username}
             Password: ${password}
-    
-        Thank you for registering with us! Your account is currently pending admin approval.
-        You will be notified once your account has been approved.
-    
-          Best regards,
-          Project Leaf Team,
-          Premier Energies!
-        `,
+
+            Thank you for registering with us! Your account is currently pending admin approval.
+            You will be notified once your account has been approved.
+
+            Best regards,
+            Premier Energies Team
+          `
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: email
+            }
+          }
+        ],
+        from: {
+          emailAddress: {
+            address: SENDER_EMAIL
+          }
+        }
+      }
     };
 
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "aarnavsingh836@gmail.com",
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken,
-      },
-    });
-
-    await transporter.sendMail(mailOptions);
+    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
 
     res.status(201).json({ message: "Vendor added successfully!" });
   } catch (error) {
@@ -751,9 +763,9 @@ app.post("/api/rfq", async (req, res) => {
   try {
     const now = moment().tz("Asia/Kolkata");
     // For testing, set initial quote period to 1 minute
-    const initialQuoteEndTime = now.clone().add(10, "minutes").toDate();
+    const initialQuoteEndTime = now.clone().add(1440, "minutes").toDate();
     // Set evaluation period to 2 minutes after initial period
-    const evaluationEndTime = now.clone().add(999, "minutes").toDate();
+    const evaluationEndTime = now.clone().add(9999, "minutes").toDate();
 
     // Fetch the last created RFQ to get the current highest RFQNumber
     const lastRFQ = await RFQ.findOne().sort({ _id: -1 });
@@ -773,7 +785,7 @@ app.post("/api/rfq", async (req, res) => {
       selectedVendors: req.body.selectedVendors,
     };
 
-    // Create a new RFQ with the generated number
+    // create a new RFQ with the generated number
     const rfq = new RFQ(newRFQData);
 
     if (req.body.selectedVendors && req.body.selectedVendors.length > 0) {
@@ -788,7 +800,7 @@ app.post("/api/rfq", async (req, res) => {
 
     await rfq.save();
 
-    // Send email to vendors
+    // send email to vendors
     const emailResponse = await sendRFQEmail(
       newRFQData,
       req.body.selectedVendors
@@ -881,6 +893,37 @@ app.post("/api/quote", async (req, res) => {
         await newQuote.save();
       }
 
+      const emailContent = {
+        message: {
+          subject: `Initial Quote Submitted by ${vendorName} for RFQ ${rfqId}`,
+          body: {
+            contentType: "Text",
+            content: `
+              A new quote has been submitted for RFQ ID: ${rfqId}.
+              Vendor: ${vendorName}
+              Quote: ${quote}
+              Number of Trucks: ${numberOfTrucks}
+              Validity Period: ${validityPeriod}
+              Message: ${message}
+            `
+          },
+          toRecipients: [
+            {
+              emailAddress: {
+                address: SENDER_EMAIL
+              }
+            }
+          ],
+          from: {
+            emailAddress: {
+              address: SENDER_EMAIL
+            }
+          }
+        }
+      };
+      
+      await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);      
+
       res.status(200).json({ message: "Quote submitted successfully." });
     } else if (rfq.status === "evaluation") {
       // Only allow vendors who submitted initial quotes to update
@@ -903,6 +946,37 @@ app.post("/api/quote", async (req, res) => {
       existingQuote.message = message;
       existingQuote.validityPeriod = validityPeriod;
       await existingQuote.save();
+
+      const emailContent = {
+        message: {
+          subject: `Quote Updated by ${vendorName} for RFQ ${rfqId}`,
+          body: {
+            contentType: "Text",
+            content: `
+              A quote has been updated for RFQ ID: ${rfqId}.
+              Vendor: ${vendorName}
+              Quote: ${quote}
+              Number of Trucks: ${numberOfTrucks}
+              Validity Period: ${validityPeriod}
+              Message: ${message}
+            `
+          },
+          toRecipients: [
+            {
+              emailAddress: {
+                address: SENDER_EMAIL
+              }
+            }
+          ],
+          from: {
+            emailAddress: {
+              address: SENDER_EMAIL
+            }
+          }
+        }
+      };
+      
+      await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);      
 
       res.status(200).json({ message: "Quote updated successfully." });
     } else {
@@ -961,30 +1035,37 @@ app.put("/api/quote/:quoteId", async (req, res) => {
       return res.status(404).json({ error: "Quote not found" });
     }
 
-    const adminEmail = "aarnavsingh836@gmail.com";
-    const mailOptions = {
-      from: "aarnavsingh836@gmail.com",
-      to: adminEmail,
-      subject: "Quote Updated",
-      text: `A quote has been updated for RFQ ID: ${rfqId}\nVendor: ${vendorName}\nQuote: ${quote}\nValidity Period: ${validityPeriod}\nMessage: ${message}`,
+    const emailContent = {
+      message: {
+        subject: `Quote Updated for RFQ ${rfqId}`,
+        body: {
+          contentType: "Text",
+          content: `
+            A quote has been updated for RFQ ID: ${rfqId}.
+            Vendor: ${vendorName}
+            Quote: ${quote}
+            Number of Trucks: ${numberOfTrucks}
+            Validity Period: ${validityPeriod}
+            Message: ${message}
+          `
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: SENDER_EMAIL // Send to leaf@premierenergies.com
+            }
+          }
+        ],
+        from: {
+          emailAddress: {
+            address: SENDER_EMAIL // Send from leaf@premierenergies.com
+          }
+        }
+      }
     };
 
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "aarnavsingh836@gmail.com",
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken,
-      },
-    });
-
-    await transporter.sendMail(mailOptions);
+    // Send the email using Microsoft Graph API
+    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
 
     res.status(200).json({ message: "Quote updated and email sent to admin" });
   } catch (error) {
@@ -1119,44 +1200,43 @@ app.post("/api/add-factory-user", async (req, res) => {
 
     await newUser.save();
 
-    // send the welcome email (if needed)
-    const mailOptions = {
-      from: "aarnavsingh836@gmail.com",
-      to: email,
-      subject: "Welcome to Leaf",
-      text: `
-          Dear ${username},
-    
-          Welcome to LEAF by Premier Energies! We're excited to have you onboard.
-    
-          Here are your login credentials:
+    const emailContent = {
+      message: {
+        subject: "Welcome to Leaf",
+        body: {
+          contentType: "Text",
+          content: `
+            Dear ${username},
+
+            Welcome to LEAF by Premier Energies! We're excited to have you onboard.
+
+            Here are your login credentials:
             Username: ${username}
             Password: ${password}
-    
-        Thank you for registering with us! Your account is currently pending admin approval.
-        You will be notified once your account has been approved.
-    
-          Best regards,
-          Premier Energies Team
-        `,
+
+            Thank you for registering with us! Your account is currently pending admin approval.
+            You will be notified once your account has been approved.
+
+            Best regards,
+            Premier Energies Team
+          `
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: email
+            }
+          }
+        ],
+        from: {
+          emailAddress: {
+            address: SENDER_EMAIL
+          }
+        }
+      }
     };
 
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "aarnavsingh836@gmail.com",
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken,
-      },
-    });
-
-    await transporter.sendMail(mailOptions);
+    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
 
     res.status(201).json({ message: "Factory user added successfully!" });
   } catch (error) {
@@ -1209,48 +1289,43 @@ app.post("/api/decline-account/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Find the user by ID
     const user = await User.findById(id);
-
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Send account rejection email
-    const mailOptions = {
-      from: "aarnavsingh836@gmail.com",
-      to: user.email,
-      subject: "Account Rejected",
-      text: `
-        Dear ${user.username},
+    const emailContent = {
+      message: {
+        subject: "Account Rejected",
+        body: {
+          contentType: "Text",
+          content: `
+            Dear ${user.username},
 
-        We regret to inform you that your account registration has been rejected by the admin.
+            We regret to inform you that your account registration has been rejected by the admin.
 
-        For any further inquiries, please contact our support team.
+            For any further inquiries, please contact our support team.
 
-        Best regards,
-        Premier Energies Team
-      `,
+            Best regards,
+            Premier Energies Team
+          `
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: user.email
+            }
+          }
+        ],
+        from: {
+          emailAddress: {
+            address: SENDER_EMAIL
+          }
+        }
+      }
     };
 
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "aarnavsingh836@gmail.com",
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken,
-      },
-    });
-
-    await transporter.sendMail(mailOptions);
-
-    // Delete the user from the database
+    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
     await User.findByIdAndDelete(id);
 
     res.status(200).json({ message: "User account declined and email sent." });
@@ -1259,6 +1334,7 @@ app.post("/api/decline-account/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to decline user account" });
   }
 });
+
 
 // endpoint to delete a vendor by ID
 app.delete("/api/vendors/:id", async (req, res) => {
@@ -1352,69 +1428,83 @@ async function assignInitialLabelsAndTrucks(rfq) {
   }
 }
 
+// function to send send initial phase emails
 async function sendInitialPhaseEmails(rfq) {
   try {
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "aarnavsingh836@gmail.com",
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken,
-      },
-    });
-
     // Notify L1 vendor
     if (rfq.l1VendorId) {
       const l1Vendor = await Vendor.findById(rfq.l1VendorId);
-      const mailOptions = {
-        from: "aarnavsingh836@gmail.com",
-        to: l1Vendor.email,
-        subject: `Congratulations! You are L1 for RFQ ${rfq.RFQNumber}`,
-        text: `
-          Dear ${l1Vendor.vendorName},
-
-          Congratulations! At the conclusion of the initial bidding phase, you are L1 and have been allotted ${Math.ceil(
-            rfq.numberOfVehicles * 0.4
-          )} trucks for RFQ ${rfq.RFQNumber}.
-
-          Best regards,
-          Premier Energies Team
-        `,
+      const emailContent = {
+        message: {
+          subject: `Congratulations! You are L1 for RFQ ${rfq.RFQNumber}`,
+          body: {
+            contentType: "Text",
+            content: `
+              Dear ${l1Vendor.vendorName},
+              Congratulations! At the conclusion of the initial bidding phase, you are L1 and have been allotted ${Math.ceil(
+                rfq.numberOfVehicles * 0.4
+              )} trucks for RFQ ${rfq.RFQNumber}.
+              Best regards,
+              Premier Energies Team
+            `
+          },
+          toRecipients: [
+            {
+              emailAddress: {
+                address: l1Vendor.email
+              }
+            }
+          ],
+          from: {
+            emailAddress: {
+              address: SENDER_EMAIL
+            }
+          }
+        }
       };
-      await transporter.sendMail(mailOptions);
+      await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
     }
 
-    // Notify other vendors
+    // notify other vendors
     const initialQuotes = await Quote.find({ rfqId: rfq._id });
     for (const quote of initialQuotes) {
       if (quote.vendorName !== l1Vendor.vendorName) {
         const vendor = await Vendor.findOne({ vendorName: quote.vendorName });
-        const mailOptions = {
-          from: "aarnavsingh836@gmail.com",
-          to: vendor.email,
-          subject: `Update Your Quote for RFQ ${rfq.RFQNumber}`,
-          text: `
-            Dear ${vendor.vendorName},
-
-            L1 Price is ${rfq.l1Price}. Please log in and update your quote to match it or provide your no regret price to get your assigned label and truck allocation.
-
-            Best regards,
-            Premier Energies Team
-          `,
+        const emailContent = {
+          message: {
+            subject: `Update Your Quote for RFQ ${rfq.RFQNumber}`,
+            body: {
+              contentType: "Text",
+              content: `
+                Dear ${vendor.vendorName},
+                L1 Price is ${rfq.l1Price}. Please log in and update your quote to match it or provide your no-regret price to get your assigned label and truck allocation.
+                Best regards,
+                Premier Energies Team
+              `
+            },
+            toRecipients: [
+              {
+                emailAddress: {
+                  address: vendor.email
+                }
+              }
+            ],
+            from: {
+              emailAddress: {
+                address: SENDER_EMAIL
+              }
+            }
+          }
         };
-        await transporter.sendMail(mailOptions);
+        await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
       }
     }
   } catch (error) {
     console.error("Error sending initial phase emails:", error);
   }
 }
+
+
 
 // Endpoint to finalize RFQ
 app.post("/api/rfq/:id/finalize", async (req, res) => {
@@ -1447,40 +1537,37 @@ app.post("/api/rfq/:id/finalize", async (req, res) => {
       (q) => q.vendorName !== l1Vendor.vendorName
     );
 
-    const accessTokenResponse = await oAuth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: "aarnavsingh836@gmail.com",
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken,
-      },
-    });
-
     for (const quote of otherVendors) {
       const vendor = await Vendor.findOne({ vendorName: quote.vendorName });
       if (vendor) {
-        const mailOptions = {
-          from: "aarnavsingh836@gmail.com",
-          to: vendor.email,
-          subject: `${rfq.RFQNumber} Finalized`,
-          text: `
-            Dear ${vendor.vendorName},
-
-            The ${rfq.RFQNumber} has been finalized. Your label is ${quote.label} and you have been allotted ${quote.trucksAllotted} trucks.
-
-            Thank you for your participation.
-
-            Best regards,
-            Premier Energies Team
-          `,
+        const emailContent = {
+          message: {
+            subject: `${rfq.RFQNumber} Finalized`,
+            body: {
+              contentType: "Text",
+              content: `
+                Dear ${vendor.vendorName},
+                The ${rfq.RFQNumber} has been finalized. Your label is ${quote.label} and you have been allotted ${quote.trucksAllotted} trucks.
+                Thank you for your participation.
+                Best regards,
+                Premier Energies Team
+              `
+            },
+            toRecipients: [
+              {
+                emailAddress: {
+                  address: vendor.email
+                }
+              }
+            ],
+            from: {
+              emailAddress: {
+                address: SENDER_EMAIL
+              }
+            }
+          }
         };
-        await transporter.sendMail(mailOptions);
+        await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
       }
     }
 
@@ -1634,13 +1721,11 @@ async function sendParticipationReminderEmail(rfqId, selectedVendorIds) {
 
     let vendorsToEmail;
     if (selectedVendorIds && selectedVendorIds.length > 0) {
-      // Fetch only the selected vendors
       vendorsToEmail = await Vendor.find(
         { _id: { $in: selectedVendorIds } },
         "email vendorName"
       );
     } else {
-      // No vendors selected
       console.log("No selected vendors for participation reminder.");
       return { success: false, message: "No vendors selected" };
     }
@@ -1648,37 +1733,36 @@ async function sendParticipationReminderEmail(rfqId, selectedVendorIds) {
     const vendorEmails = vendorsToEmail.map((vendor) => vendor.email);
 
     if (vendorEmails.length > 0) {
-      const accessTokenResponse = await oAuth2Client.getAccessToken();
-      const accessToken = accessTokenResponse.token;
+      for (const vendor of vendorsToEmail) {
+        const emailContent = {
+          message: {
+            subject: `Reminder: Participation for ${rfq.RFQNumber}`,
+            body: {
+              contentType: "HTML",
+              content: `
+                <p>Dear Vendor,</p>
+                <p>This is a reminder to participate in the RFQ process for RFQ Number: <strong>${rfq.RFQNumber}</strong>.</p>
+                <p>Please submit your quote at your earliest convenience.</p>
+                <p>Best regards,<br/>Premier Energies Limited</p>
+              `
+            },
+            toRecipients: [
+              {
+                emailAddress: {
+                  address: vendor.email
+                }
+              }
+            ],
+            from: {
+              emailAddress: {
+                address: SENDER_EMAIL
+              }
+            }
+          }
+        };
+        await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
+      }
 
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          type: "OAuth2",
-          user: "aarnavsingh836@gmail.com",
-          clientId: CLIENT_ID,
-          clientSecret: CLIENT_SECRET,
-          refreshToken: REFRESH_TOKEN,
-          accessToken: accessToken,
-        },
-      });
-
-      const mailOptions = {
-        from: "aarnavsingh836@gmail.com",
-        to: vendorEmails.join(", "),
-        subject: `Reminder: Participation for ${rfq.RFQNumber}`,
-        html: `
-          <p>Dear Vendor,</p>
-          <p>This is a reminder to participate in the RFQ process for RFQ Number: <strong>${rfq.RFQNumber}</strong>.</p>
-          <p>Please submit your quote at your earliest convenience.</p>
-          <p>Best regards,<br/>Premier Energies Limited</p>
-        `,
-      };
-
-      await transporter.sendMail(mailOptions);
-      console.log("Participation reminder emails sent successfully.");
-
-      // **Add the vendorActions recording here**
       selectedVendorIds.forEach((vendorId) => {
         rfq.vendorActions.push({
           action: "reminderSent",

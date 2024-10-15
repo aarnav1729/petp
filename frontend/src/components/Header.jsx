@@ -129,7 +129,7 @@ const Header = ({ role, onLogout }) => {
                     <Link
                       to={link.to}
                       className={`hover:text-indigo-600 hover:bg-white p-2 rounded font-bold block transition ${
-                        scrolled ? "text-white" : "text-white"
+                        scrolled ? "text-black" : "text-white"
                       } hover:text-secondary md:px-4`}
                       onClick={() => setOpenNav(false)}
                     >
