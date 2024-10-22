@@ -21,7 +21,7 @@ const RFQList = () => {
 
   const fetchRFQs = async () => {
     try {
-      const response = await axios.get('https://petp.onrender.com/api/rfqs');
+      const response = await axios.get('http://localhost:5000/api/rfqs');
       setRfqs(response.data);
     } catch (error) {
       console.error('Error fetching RFQs:', error);
@@ -31,7 +31,7 @@ const RFQList = () => {
   const updateStatus = async (id, newStatus) => {
     console.log(`Updating RFQ with ID: ${id}, New Status: ${newStatus}`);
     try {
-      await axios.patch(`https://petp.onrender.com/api/rfq/${id}`, { status: newStatus });
+      await axios.patch(`http://localhost:5000/api/rfq/${id}`, { status: newStatus });
 
       // Find the RFQ in the current state and update its status directly
       setRfqs(prevRfqs =>

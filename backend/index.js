@@ -1,3 +1,4 @@
+//REQM_1: LEAF
 // import all required modules
 const express = require("express");
 const mongoose = require("mongoose");
@@ -45,13 +46,15 @@ const server = http.createServer(app);
 // create socket.io server
 const io = new Server(server, {
   cors: {
-    origin: "https://petp-alpha.vercel.app/",
+    origin: "*",
     methods: ["GET", "POST", "PUT"],
+    allowedHeaders: ["Authorization", "Content-Type"],
+    credentials: true,
   },
 });
 
 // middleware
-app.use(cors());
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 
 // socket.io configuration
@@ -126,7 +129,7 @@ mongoose
     {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 30000, 
+      serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
     }
   )
@@ -170,15 +173,26 @@ async function sendRFQEmail(rfqData, selectedVendorIds) {
       for (const vendor of vendorsToEmail) {
         const emailContent = {
           message: {
-            subject: "New RFQ Posted - Submit Initial Quote within 24 hours",
+            subject: "New RFQ Posted - Submit Initial Quote",
             body: {
               contentType: "HTML",
               content: `
-                <p>Dear Vendor,</p>
-                <p>You are one of the selected vendors for ${
-                  rfqData.RFQNumber
-                }. You have 24 hours to submit an initial quote. Only vendors who submit an initial quote will be allowed to update their quote during the evaluation period.</p>
-                <p>Please log in to your account to submit your quote.</p>
+                  <p>Dear Vendor,</p>
+                  <p>You are one of the selected vendors for ${
+                    rfqData.RFQNumber
+                  }.</p>
+                  <p>Initial Quote End Time: ${moment(
+                    rfqData.initialQuoteEndTime
+                  )
+                    .tz("Asia/Kolkata")
+                    .format("YYYY-MM-DD HH:mm")}</p>
+                  <p>Evaluation Period End Time: ${moment(
+                    rfqData.evaluationEndTime
+                  )
+                    .tz("Asia/Kolkata")
+                    .format("YYYY-MM-DD HH:mm")}</p>
+                  <p>Please log in to your account to submit your quote.</p>
+        
                 <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; inline-size: 100%;">
                   <thead>
                     <tr>
@@ -203,7 +217,7 @@ async function sendRFQEmail(rfqData, selectedVendorIds) {
                   </tbody>
                 </table>
                 <p>We look forward to receiving your quote.</p>
-                <p>Best regards,<br/>Premier Energies Limited</p>
+                <p>Best regards,<br/>Team LEAF.</p>
               `,
             },
             toRecipients: [
@@ -242,6 +256,8 @@ const vendorSchema = new mongoose.Schema({
   password: String,
   email: { type: String, unique: true, required: true },
   contactNumber: { type: String, unique: true, required: true },
+  //companyName: String,
+  //sapVendorCode: String,
 });
 
 const Vendor = mongoose.model("Vendor", vendorSchema);
@@ -257,6 +273,12 @@ const quoteSchema = new mongoose.Schema(
     validityPeriod: String,
     label: String,
     trucksAllotted: Number,
+    numberOfVehiclesPerDay: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 99,
+    },
   },
   { timestamps: true }
 );
@@ -287,6 +309,18 @@ const rfqSchema = new mongoose.Schema(
     originLocation: String,
     dropLocationState: String,
     dropLocationDistrict: String,
+    address: { type: String, required: true },
+    pincode: {
+      type: String,
+      required: true,
+      validate: {
+        validator: function (v) {
+          return /^\d{6}$/.test(v);
+        },
+        message: (props) =>
+          `${props.value} is not a valid pincode. It should be exactly 6 digits.`,
+      },
+    },
     vehicleType: String,
     additionalVehicleDetails: String,
     numberOfVehicles: Number,
@@ -302,8 +336,8 @@ const rfqSchema = new mongoose.Schema(
       enum: ["initial", "evaluation", "closed"],
       default: "initial",
     },
-    initialQuoteEndTime: Date,
-    evaluationEndTime: Date,
+    initialQuoteEndTime: { type: Date, required: true },
+    evaluationEndTime: { type: Date, required: true },
     l1Price: Number,
     l1VendorId: { type: mongoose.Schema.Types.ObjectId, ref: "Vendor" },
     RFQClosingDate: Date,
@@ -328,7 +362,7 @@ const RFQ = mongoose.model("RFQ", rfqSchema);
 const verificationSchema = new mongoose.Schema({
   email: { type: String, required: true },
   otp: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 300 }, 
+  createdAt: { type: Date, default: Date.now, expires: 300 },
 });
 
 const Verification = mongoose.model("Verification", verificationSchema);
@@ -353,21 +387,21 @@ app.post("/api/send-otp", async (req, res) => {
         subject: "Your OTP for Registration",
         body: {
           contentType: "Text",
-          content: `Your OTP for registration is: ${otp}. It is valid for 5 minutes.`
+          content: `Your OTP for registration is: ${otp}. It is valid for 5 minutes.`,
         },
         toRecipients: [
           {
             emailAddress: {
-              address: email
-            }
-          }
+              address: email,
+            },
+          },
         ],
         from: {
           emailAddress: {
-            address: SENDER_EMAIL
-          }
-        }
-      }
+            address: SENDER_EMAIL,
+          },
+        },
+      },
     };
 
     // send the email using Microsoft Graph API
@@ -379,7 +413,6 @@ app.post("/api/send-otp", async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to send OTP." });
   }
 });
-
 
 // endpoint to verify OTP
 app.post("/api/verify-otp", async (req, res) => {
@@ -493,22 +526,22 @@ app.post("/api/approve-account/:id", async (req, res) => {
             You can now log in to the portal using your credentials.
 
             Best regards,
-            Premier Energies Team
-          `
+            Team LEAF.
+          `,
         },
         toRecipients: [
           {
             emailAddress: {
-              address: user.email
-            }
-          }
+              address: user.email,
+            },
+          },
         ],
         from: {
           emailAddress: {
-            address: SENDER_EMAIL
-          }
-        }
-      }
+            address: SENDER_EMAIL,
+          },
+        },
+      },
     };
 
     // send the email using Microsoft Graph API
@@ -520,7 +553,6 @@ app.post("/api/approve-account/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to approve user account" });
   }
 });
-
 
 // endpoint for fetching active auctions
 {
@@ -583,7 +615,8 @@ app.post("/api/approve-account/:id", async (req, res) => {
 
 // endpoint for vendor registration
 app.post("/api/register", async (req, res) => {
-  const { username, password, vendorName, email, contactNumber, role } = req.body;
+  const { username, password, vendorName, email, contactNumber, role } =
+    req.body;
 
   try {
     const newUser = new User({
@@ -615,22 +648,22 @@ app.post("/api/register", async (req, res) => {
             You will be notified once your account has been approved.
 
             Best regards,
-            Premier Energies Team
-          `
+            Team LEAF.
+          `,
         },
         toRecipients: [
           {
             emailAddress: {
-              address: email
-            }
-          }
+              address: email,
+            },
+          },
         ],
         from: {
           emailAddress: {
-            address: SENDER_EMAIL
-          }
-        }
-      }
+            address: SENDER_EMAIL,
+          },
+        },
+      },
     };
 
     // send the email using Microsoft Graph API
@@ -638,11 +671,13 @@ app.post("/api/register", async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "User registered successfully and welcome email sent."
+      message: "User registered successfully and welcome email sent.",
     });
   } catch (error) {
     console.error("Error registering vendor:", error);
-    res.status(500).json({ success: false, message: "Failed to register vendor." });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to register vendor." });
   }
 });
 
@@ -712,22 +747,22 @@ app.post("/api/add-vendor", async (req, res) => {
             You will be notified once your account has been approved.
 
             Best regards,
-            Premier Energies Team
-          `
+            Team LEAF.
+          `,
         },
         toRecipients: [
           {
             emailAddress: {
-              address: email
-            }
-          }
+              address: email,
+            },
+          },
         ],
         from: {
           emailAddress: {
-            address: SENDER_EMAIL
-          }
-        }
-      }
+            address: SENDER_EMAIL,
+          },
+        },
+      },
     };
 
     await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
@@ -761,11 +796,23 @@ app.get("/api/next-rfq-number", async (req, res) => {
 // endpoint for creating a new RFQ
 app.post("/api/rfq", async (req, res) => {
   try {
+    const formData = req.body;
     const now = moment().tz("Asia/Kolkata");
-    // For testing, set initial quote period to 1 minute
-    const initialQuoteEndTime = now.clone().add(1440, "minutes").toDate();
-    // Set evaluation period to 2 minutes after initial period
-    const evaluationEndTime = now.clone().add(9999, "minutes").toDate();
+    // Parse initialQuoteEndTime and evaluationEndTime from req.body
+
+    const initialQuoteEndTime = moment
+      .tz(req.body.initialQuoteEndTime, "YYYY-MM-DDTHH:mm", "Asia/Kolkata")
+      .toDate();
+    const evaluationEndTime = moment
+      .tz(req.body.evaluationEndTime, "YYYY-MM-DDTHH:mm", "Asia/Kolkata")
+      .toDate();
+
+    // Validate that evaluationEndTime is after initialQuoteEndTime
+    if (evaluationEndTime <= initialQuoteEndTime) {
+      return res.status(400).json({
+        error: "Evaluation End Time must be after Initial Quote End Time",
+      });
+    }
 
     // Fetch the last created RFQ to get the current highest RFQNumber
     const lastRFQ = await RFQ.findOne().sort({ _id: -1 });
@@ -847,6 +894,7 @@ app.post("/api/quote", async (req, res) => {
       vendorName,
       numberOfTrucks,
       validityPeriod,
+      numberOfVehiclesPerDay,
     } = req.body;
 
     // Fetch the RFQ to get numberOfVehicles
@@ -878,6 +926,7 @@ app.post("/api/quote", async (req, res) => {
       if (existingQuote) {
         existingQuote.price = quote;
         existingQuote.numberOfTrucks = numberOfTrucks;
+        existingQuote.numberOfVehiclesPerDay = numberOfVehiclesPerDay;
         existingQuote.message = message;
         existingQuote.validityPeriod = validityPeriod;
         await existingQuote.save();
@@ -887,6 +936,7 @@ app.post("/api/quote", async (req, res) => {
           vendorName,
           price: quote,
           numberOfTrucks,
+          numberOfVehiclesPerDay,
           message,
           validityPeriod,
         });
@@ -895,7 +945,7 @@ app.post("/api/quote", async (req, res) => {
 
       const emailContent = {
         message: {
-          subject: `Initial Quote Submitted by ${vendorName} for RFQ ${rfqId}`,
+          subject: `Initial Quote Submitted by ${vendorName} for RFQ ${rfq.RFQNumber}`,
           body: {
             contentType: "Text",
             content: `
@@ -905,28 +955,28 @@ app.post("/api/quote", async (req, res) => {
               Number of Trucks: ${numberOfTrucks}
               Validity Period: ${validityPeriod}
               Message: ${message}
-            `
+            `,
           },
           toRecipients: [
             {
               emailAddress: {
-                address: SENDER_EMAIL
-              }
-            }
+                address: SENDER_EMAIL,
+              },
+            },
           ],
           from: {
             emailAddress: {
-              address: SENDER_EMAIL
-            }
-          }
-        }
+              address: SENDER_EMAIL,
+            },
+          },
+        },
       };
-      
-      await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);      
+
+      await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
 
       res.status(200).json({ message: "Quote submitted successfully." });
     } else if (rfq.status === "evaluation") {
-      // Only allow vendors who submitted initial quotes to update
+      // only allow vendors who submitted initial quotes to update
       const existingQuote = await Quote.findOne({ rfqId, vendorName });
       if (!existingQuote) {
         return res
@@ -940,9 +990,10 @@ app.post("/api/quote", async (req, res) => {
           .json({ error: "L1 vendor cannot update the quote." });
       }
 
-      // Allow updating the quote
+      // allow updating the quote
       existingQuote.price = quote;
       existingQuote.numberOfTrucks = numberOfTrucks;
+      existingQuote.numberOfVehiclesPerDay = numberOfVehiclesPerDay;
       existingQuote.message = message;
       existingQuote.validityPeriod = validityPeriod;
       await existingQuote.save();
@@ -959,24 +1010,24 @@ app.post("/api/quote", async (req, res) => {
               Number of Trucks: ${numberOfTrucks}
               Validity Period: ${validityPeriod}
               Message: ${message}
-            `
+            `,
           },
           toRecipients: [
             {
               emailAddress: {
-                address: SENDER_EMAIL
-              }
-            }
+                address: SENDER_EMAIL,
+              },
+            },
           ],
           from: {
             emailAddress: {
-              address: SENDER_EMAIL
-            }
-          }
-        }
+              address: SENDER_EMAIL,
+            },
+          },
+        },
       };
-      
-      await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);      
+
+      await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
 
       res.status(200).json({ message: "Quote updated successfully." });
     } else {
@@ -1000,10 +1051,11 @@ app.put("/api/quote/:quoteId", async (req, res) => {
       message,
       vendorName,
       numberOfTrucks,
+      numberOfVehiclesPerDay,
       validityPeriod,
     } = req.body;
 
-    // Fetch the RFQ to get numberOfVehicles
+    // fetch the RFQ to get numberOfVehicles
     const rfq = await RFQ.findById(rfqId);
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
@@ -1025,6 +1077,7 @@ app.put("/api/quote/:quoteId", async (req, res) => {
         vendorName,
         price: quote,
         numberOfTrucks,
+        numberOfVehiclesPerDay,
         validityPeriod,
         message,
       },
@@ -1047,21 +1100,21 @@ app.put("/api/quote/:quoteId", async (req, res) => {
             Number of Trucks: ${numberOfTrucks}
             Validity Period: ${validityPeriod}
             Message: ${message}
-          `
+          `,
         },
         toRecipients: [
           {
             emailAddress: {
-              address: SENDER_EMAIL // Send to leaf@premierenergies.com
-            }
-          }
+              address: SENDER_EMAIL, // send to leaf@premierenergies.com
+            },
+          },
         ],
         from: {
           emailAddress: {
-            address: SENDER_EMAIL // Send from leaf@premierenergies.com
-          }
-        }
-      }
+            address: SENDER_EMAIL, // send from leaf@premierenergies.com
+          },
+        },
+      },
     };
 
     // Send the email using Microsoft Graph API
@@ -1079,25 +1132,25 @@ app.get("/api/rfq/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Ensure that the ID is valid for MongoDB ObjectID
+    // ensure that the ID is valid for mongodb object id
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "Invalid RFQ ID" });
     }
 
-    // Fetch the RFQ and populate the necessary fields
+    // fetch the RFQ and populate the necessary fields
     const rfq = await RFQ.findById(id)
       .populate("selectedVendors")
       .populate("vendorActions.vendorId")
-      .lean(); // Use .lean() to get a plain JavaScript object
+      .lean(); // using .lean() to get a plain js object
 
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
     }
 
-    // Fetch quotes for this RFQ, including labels and trucksAllotted
+    // fetch quotes for this RFQ, including labels and trucksAllotted
     const quotes = await Quote.find({ rfqId: id });
 
-    // Add quotes to the rfq object
+    // add quotes to the rfq object
     rfq.quotes = quotes;
 
     res.status(200).json(rfq);
@@ -1118,7 +1171,7 @@ app.post("/api/rfq/:id/add-vendors", async (req, res) => {
       return res.status(404).json({ error: "RFQ not found" });
     }
 
-    // Update the selectedVendors list
+    // update the selectedVendors list
     const existingVendorIds = rfq.selectedVendors.map((vendorId) =>
       vendorId.toString()
     );
@@ -1128,7 +1181,7 @@ app.post("/api/rfq/:id/add-vendors", async (req, res) => {
 
     rfq.selectedVendors = rfq.selectedVendors.concat(newVendorIds);
 
-    // Record the vendor addition actions
+    // record the vendor addition actions
     newVendorIds.forEach((vendorId) => {
       rfq.vendorActions.push({
         action: "added",
@@ -1139,10 +1192,10 @@ app.post("/api/rfq/:id/add-vendors", async (req, res) => {
 
     await rfq.save();
 
-    // Convert the RFQ document to a plain JavaScript object
+    // convert the RFQ document to a plain js object
     const rfqData = rfq.toObject();
 
-    // Send RFQ email to the newly added vendors
+    // send RFQ email to the newly added vendors
     const emailResponse = await sendRFQEmail(rfqData, newVendorIds);
 
     if (!emailResponse.success) {
@@ -1218,22 +1271,22 @@ app.post("/api/add-factory-user", async (req, res) => {
             You will be notified once your account has been approved.
 
             Best regards,
-            Premier Energies Team
-          `
+            Team LEAF
+          `,
         },
         toRecipients: [
           {
             emailAddress: {
-              address: email
-            }
-          }
+              address: email,
+            },
+          },
         ],
         from: {
           emailAddress: {
-            address: SENDER_EMAIL
-          }
-        }
-      }
+            address: SENDER_EMAIL,
+          },
+        },
+      },
     };
 
     await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
@@ -1307,22 +1360,22 @@ app.post("/api/decline-account/:id", async (req, res) => {
             For any further inquiries, please contact our support team.
 
             Best regards,
-            Premier Energies Team
-          `
+            Team LEAF
+          `,
         },
         toRecipients: [
           {
             emailAddress: {
-              address: user.email
-            }
-          }
+              address: user.email,
+            },
+          },
         ],
         from: {
           emailAddress: {
-            address: SENDER_EMAIL
-          }
-        }
-      }
+            address: SENDER_EMAIL,
+          },
+        },
+      },
     };
 
     await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
@@ -1335,7 +1388,6 @@ app.post("/api/decline-account/:id", async (req, res) => {
   }
 });
 
-
 // endpoint to delete a vendor by ID
 app.delete("/api/vendors/:id", async (req, res) => {
   try {
@@ -1346,7 +1398,7 @@ app.delete("/api/vendors/:id", async (req, res) => {
       return res.status(404).json({ error: "Vendor not found" });
     }
 
-    // Also delete from User collection
+    // also delete from User collection
     await User.findOneAndDelete({ username: vendor.username });
 
     res.status(200).json({ message: "Vendor deleted successfully" });
@@ -1384,83 +1436,210 @@ app.patch("/api/rfq/:id", async (req, res) => {
 });
 
 // function to assign labels and actual trucks allotted
-async function assignInitialLabelsAndTrucks(rfq) {
+//async function assignInitialLabelsAndTrucks(rfq) {
+//try {
+// fetch all initial quotes
+//const initialQuotes = await Quote.find({ rfqId: rfq._id });
+
+// assign labels based on price (ascending order)
+//    const sortedQuotes = initialQuotes.sort((a, b) => a.price - b.price);
+
+// assign labels and trucks
+//    let totalTrucks = rfq.numberOfVehicles;
+//    let totalTrucksAllocated = 0;
+
+//    for (let i = 0; i < sortedQuotes.length; i++) {
+//    const quote = sortedQuotes[i];
+//  let label = `L${i + 1}`;
+//let trucksAllotted = 0;
+
+//      if (i === 0) {
+// L1 vendor
+//      label = "L1";
+//    trucksAllotted = Math.ceil(totalTrucks * 0.4); // 40% of total trucks
+//  totalTrucksAllocated += trucksAllotted;
+//rfq.l1Price = quote.price;
+//const vendor = await Vendor.findOne({ vendorName: quote.vendorName });
+//rfq.l1VendorId = vendor._id;
+//} else {
+// allocate remaining trucks equally among other vendors
+//const remainingTrucks = totalTrucks - totalTrucksAllocated;
+//const numVendorsLeft = sortedQuotes.length - i;
+//trucksAllotted = Math.ceil(remainingTrucks / numVendorsLeft);
+//totalTrucksAllocated += trucksAllotted;
+//}
+
+// update the quote with label and trucks allotted
+//      await Quote.findByIdAndUpdate(quote._id, {
+//      label,
+//    trucksAllotted,
+//});
+//}
+//} catch (error) {
+//console.error("Error assigning labels and trucks:", error);
+//}
+//}
+
+async function allocateTrucksBasedOnPrice(rfqId) {
   try {
-    // Fetch all initial quotes
-    const initialQuotes = await Quote.find({ rfqId: rfq._id });
+    const rfq = await RFQ.findById(rfqId);
+    const requiredTrucks = rfq.numberOfVehicles;
 
-    // Assign labels based on price (ascending order)
-    const sortedQuotes = initialQuotes.sort((a, b) => a.price - b.price);
+    if (!requiredTrucks || requiredTrucks <= 0) {
+      console.error("Invalid required trucks");
+      return;
+    }
 
-    // Assign labels and trucks
-    let totalTrucks = rfq.numberOfVehicles;
-    let totalTrucksAllocated = 0;
+    let quotes = await Quote.find({ rfqId });
 
-    for (let i = 0; i < sortedQuotes.length; i++) {
-      const quote = sortedQuotes[i];
-      let label = `L${i + 1}`;
-      let trucksAllotted = 0;
-
-      if (i === 0) {
-        // L1 vendor
-        label = "L1";
-        trucksAllotted = Math.ceil(totalTrucks * 0.4); // 40% of total trucks
-        totalTrucksAllocated += trucksAllotted;
-        rfq.l1Price = quote.price;
-        const vendor = await Vendor.findOne({ vendorName: quote.vendorName });
-        rfq.l1VendorId = vendor._id;
+    // Sort the quotes with the enhanced logic
+    quotes.sort((a, b) => {
+      if (a.price !== b.price) {
+        return a.price - b.price; // Ascending price
       } else {
-        // Allocate remaining trucks equally among other vendors
-        const remainingTrucks = totalTrucks - totalTrucksAllocated;
-        const numVendorsLeft = sortedQuotes.length - i;
-        trucksAllotted = Math.ceil(remainingTrucks / numVendorsLeft);
-        totalTrucksAllocated += trucksAllotted;
+        return new Date(a.createdAt) - new Date(b.createdAt); // Earlier bids first
+      }
+    });
+
+    let totalTrucks = 0;
+    let i = 0;
+    let labelCounter = 1;
+
+    while (i < quotes.length && totalTrucks < requiredTrucks) {
+      const currentPrice = quotes[i].price;
+      const samePriceQuotes = [];
+
+      // Collect all quotes with the same price
+      while (i < quotes.length && quotes[i].price === currentPrice) {
+        samePriceQuotes.push(quotes[i]);
+        i++;
       }
 
-      // Update the quote with label and trucks allotted
+      // Assign the same label to all vendors with the same price
+      const label = `L${labelCounter}`;
+
+      // Calculate total trucks offered by vendors at this price
+      const totalOfferedTrucks = samePriceQuotes.reduce(
+        (sum, q) => sum + q.numberOfTrucks,
+        0
+      );
+
+      // Calculate remaining trucks to allocate
+      const remainingTrucks = requiredTrucks - totalTrucks;
+
+      // Maximum trucks that can be allocated in this group
+      const maxAllocatableTrucks = Math.min(
+        totalOfferedTrucks,
+        remainingTrucks
+      );
+
+      // Allocate trucks proportionally based on trucks offered
+      let groupTotalAllocated = 0;
+      const allocation = [];
+
+      for (const quote of samePriceQuotes) {
+        const maxPossible = quote.numberOfTrucks;
+        const proportion = maxPossible / totalOfferedTrucks;
+        let trucksToAllot = Math.floor(proportion * maxAllocatableTrucks);
+
+        // Ensure we don't allocate more than offered
+        trucksToAllot = Math.min(trucksToAllot, maxPossible);
+
+        groupTotalAllocated += trucksToAllot;
+
+        allocation.push({
+          quoteId: quote._id,
+          label,
+          trucksAllotted: trucksToAllot,
+          createdAt: quote.createdAt,
+          numberOfTrucks: quote.numberOfTrucks,
+        });
+      }
+
+      // Distribute any remaining trucks within the group
+      let trucksRemainingToAllocate =
+        maxAllocatableTrucks - groupTotalAllocated;
+
+      if (trucksRemainingToAllocate > 0) {
+        // Assign to vendors who can take more trucks, starting from earliest bidder
+        allocation
+          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+          .forEach((alloc) => {
+            const maxAdditionalTrucks =
+              alloc.numberOfTrucks - alloc.trucksAllotted;
+            if (maxAdditionalTrucks > 0 && trucksRemainingToAllocate > 0) {
+              const additionalTrucks = Math.min(
+                maxAdditionalTrucks,
+                trucksRemainingToAllocate
+              );
+              alloc.trucksAllotted += additionalTrucks;
+              trucksRemainingToAllocate -= additionalTrucks;
+              groupTotalAllocated += additionalTrucks;
+            }
+          });
+      }
+
+      totalTrucks += groupTotalAllocated;
+
+      // Update the quotes in the database
+      for (const alloc of allocation) {
+        await Quote.findByIdAndUpdate(alloc.quoteId, {
+          label: alloc.label,
+          trucksAllotted: alloc.trucksAllotted,
+        });
+      }
+
+      labelCounter++;
+    }
+
+    // For any remaining vendors, set label to "-" and trucksAllotted to 0
+    while (i < quotes.length) {
+      const quote = quotes[i];
       await Quote.findByIdAndUpdate(quote._id, {
-        label,
-        trucksAllotted,
+        label: "-",
+        trucksAllotted: 0,
       });
+      i++;
     }
   } catch (error) {
-    console.error("Error assigning labels and trucks:", error);
+    console.error("Error allocating trucks:", error);
   }
 }
 
 // function to send send initial phase emails
 async function sendInitialPhaseEmails(rfq) {
   try {
-    // Notify L1 vendor
+    // notify L1 vendor
     if (rfq.l1VendorId) {
       const l1Vendor = await Vendor.findById(rfq.l1VendorId);
       const emailContent = {
         message: {
-          subject: `Congratulations! You are L1 for RFQ ${rfq.RFQNumber}`,
+          subject: `Congratulations! You are L1 for: ${rfq.RFQNumber}`,
           body: {
             contentType: "Text",
             content: `
               Dear ${l1Vendor.vendorName},
               Congratulations! At the conclusion of the initial bidding phase, you are L1 and have been allotted ${Math.ceil(
                 rfq.numberOfVehicles * 0.4
-              )} trucks for RFQ ${rfq.RFQNumber}.
+              )} trucks for: ${rfq.RFQNumber}.
+              Ensure to abide by your quotation, all deviations will be recorded and used to assess your vendor grade.
               Best regards,
-              Premier Energies Team
-            `
+              Team LEAF.
+            `,
           },
           toRecipients: [
             {
               emailAddress: {
-                address: l1Vendor.email
-              }
-            }
+                address: l1Vendor.email,
+              },
+            },
           ],
           from: {
             emailAddress: {
-              address: SENDER_EMAIL
-            }
-          }
-        }
+              address: SENDER_EMAIL,
+            },
+          },
+        },
       };
       await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
     }
@@ -1479,22 +1658,22 @@ async function sendInitialPhaseEmails(rfq) {
                 Dear ${vendor.vendorName},
                 L1 Price is ${rfq.l1Price}. Please log in and update your quote to match it or provide your no-regret price to get your assigned label and truck allocation.
                 Best regards,
-                Premier Energies Team
-              `
+                Team LEAF
+              `,
             },
             toRecipients: [
               {
                 emailAddress: {
-                  address: vendor.email
-                }
-              }
+                  address: vendor.email,
+                },
+              },
             ],
             from: {
               emailAddress: {
-                address: SENDER_EMAIL
-              }
-            }
-          }
+                address: SENDER_EMAIL,
+              },
+            },
+          },
         };
         await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
       }
@@ -1504,38 +1683,39 @@ async function sendInitialPhaseEmails(rfq) {
   }
 }
 
-
-
-// Endpoint to finalize RFQ
+// endpoint to finalize RFQ
 app.post("/api/rfq/:id/finalize", async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Ensure that the ID is valid for MongoDB ObjectID
+    // ensure that the ID is valid for MongoDB ObjectID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "Invalid RFQ ID" });
     }
 
-    // Fetch the RFQ
+    // fetch the RFQ
     const rfq = await RFQ.findById(id);
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
     }
 
-    // Update the RFQ status to 'closed'
+    // update the RFQ status to 'closed'
     rfq.status = "closed";
     await rfq.save();
 
-    // Fetch all quotes for this RFQ
+    // fetch all quotes for this RFQ
     const quotes = await Quote.find({ rfqId: id });
 
-    // Get L1 vendor
+    // get L1 vendor
     const l1Vendor = await Vendor.findById(rfq.l1VendorId);
 
-    // Prepare email details for other vendors
+    // prepare email details for other vendors
     const otherVendors = quotes.filter(
       (q) => q.vendorName !== l1Vendor.vendorName
     );
+
+    // Allocate trucks based on price
+    await allocateTrucksBasedOnPrice(id);
 
     for (const quote of otherVendors) {
       const vendor = await Vendor.findOne({ vendorName: quote.vendorName });
@@ -1550,22 +1730,22 @@ app.post("/api/rfq/:id/finalize", async (req, res) => {
                 The ${rfq.RFQNumber} has been finalized. Your label is ${quote.label} and you have been allotted ${quote.trucksAllotted} trucks.
                 Thank you for your participation.
                 Best regards,
-                Premier Energies Team
-              `
+                Team LEAF.
+              `,
             },
             toRecipients: [
               {
                 emailAddress: {
-                  address: vendor.email
-                }
-              }
+                  address: vendor.email,
+                },
+              },
             ],
             from: {
               emailAddress: {
-                address: SENDER_EMAIL
-              }
-            }
-          }
+                address: SENDER_EMAIL,
+              },
+            },
+          },
         };
         await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
       }
@@ -1585,20 +1765,20 @@ app.get("/api/vendor-pending-rfqs/:vendorName", async (req, res) => {
   try {
     const { vendorName } = req.params;
 
-    // Fetch quotes where the vendor has participated
+    // fetch quotes where the vendor has participated
     const quotes = await Quote.find({ vendorName });
     const rfqIds = quotes.map((quote) => quote.rfqId);
 
-    // Find RFQs that the vendor bid on and have status 'closed'
+    // find RFQs that the vendor bid on and have status 'closed'
     const rfqs = await RFQ.find({
       _id: { $in: rfqIds },
       status: "closed",
     });
 
-    // For each RFQ, find the vendor's quote and extract necessary details
+    // for each RFQ, find the vendor's quote and extract necessary details
     const pendingRFQs = await Promise.all(
       rfqs.map(async (rfq) => {
-        // Fetch the vendor's quote for this RFQ
+        // fetch the vendor's quote for this RFQ
         const vendorQuote = await Quote.findOne({
           rfqId: rfq._id,
           vendorName,
@@ -1609,7 +1789,6 @@ app.get("/api/vendor-pending-rfqs/:vendorName", async (req, res) => {
           RFQNumber: rfq.RFQNumber,
           label: vendorQuote ? vendorQuote.label : "-",
           trucksAllotted: vendorQuote ? vendorQuote.trucksAllotted : 0,
-          // Additional RFQ details
           originLocation: rfq.originLocation,
           dropLocationState: rfq.dropLocationState,
           dropLocationDistrict: rfq.dropLocationDistrict,
@@ -1628,11 +1807,12 @@ app.get("/api/vendor-pending-rfqs/:vendorName", async (req, res) => {
   }
 });
 
-// Endpoint to update a quote's price and trucksAllotted (for factory user)
+// endpoint to update a quote's price and trucks allotted (for factory user)
+
 app.put("/api/quote/factory/:quoteId", async (req, res) => {
   try {
     const { quoteId } = req.params;
-    const { price, trucksAllotted, label } = req.body;
+    const { price, trucksAllotted } = req.body;
 
     // Find the quote
     const existingQuote = await Quote.findById(quoteId);
@@ -1652,27 +1832,58 @@ app.put("/api/quote/factory/:quoteId", async (req, res) => {
         .json({ error: "Cannot update quote. RFQ is closed." });
     }
 
-    // Update the quote
-    const updatedQuote = await Quote.findByIdAndUpdate(
-      quoteId,
-      {
-        price,
-        trucksAllotted,
-        label,
-      },
-      { new: true }
-    );
+    // Fetch all quotes for the RFQ
+    const allQuotes = await Quote.find({ rfqId: rfq._id });
+
+    // Calculate total trucks allotted with the updated value
+    const totalTrucksAllotted = allQuotes.reduce((sum, q) => {
+      if (q._id.toString() === quoteId) {
+        return sum + trucksAllotted;
+      }
+      return sum + (q.trucksAllotted || 0);
+    }, 0);
+
+    if (totalTrucksAllotted > rfq.numberOfVehicles) {
+      return res.status(400).json({
+        error: `Total trucks allotted (${totalTrucksAllotted}) exceeds required number (${rfq.numberOfVehicles}).`,
+      });
+    }
+
+    // L1 Constraints
+    if (existingQuote.label === "L1") {
+      const minL1Trucks = Math.ceil(rfq.numberOfVehicles * 0.39);
+
+      if (price > existingQuote.price) {
+        return res
+          .status(400)
+          .json({ error: "L1 price cannot be increased." });
+      }
+
+      if (trucksAllotted < minL1Trucks) {
+        return res.status(400).json({
+          error: `L1 trucks allotted cannot be less than 39% of total trucks (${minL1Trucks}).`,
+        });
+      }
+    }
+    
+    // Proceed to update the quote
+    existingQuote.price = price;
+    existingQuote.trucksAllotted = trucksAllotted;
+    await existingQuote.save();
 
     res
       .status(200)
-      .json({ message: "Quote updated successfully", updatedQuote });
+      .json({
+        message: "Quote updated successfully",
+        updatedQuote: existingQuote,
+      });
   } catch (error) {
     console.error("Error updating quote:", error);
     res.status(500).json({ error: "Failed to update quote" });
   }
 });
 
-// Fetch all closed RFQs (for all vendors)
+// fetch all closed RFQs (for all vendors)
 {
   /*app.get("/api/closed-rfqs", async (req, res) => {
   try {
@@ -1743,22 +1954,22 @@ async function sendParticipationReminderEmail(rfqId, selectedVendorIds) {
                 <p>Dear Vendor,</p>
                 <p>This is a reminder to participate in the RFQ process for RFQ Number: <strong>${rfq.RFQNumber}</strong>.</p>
                 <p>Please submit your quote at your earliest convenience.</p>
-                <p>Best regards,<br/>Premier Energies Limited</p>
-              `
+                <p>Best regards,<br/>Team LEAF.</p>
+              `,
             },
             toRecipients: [
               {
                 emailAddress: {
-                  address: vendor.email
-                }
-              }
+                  address: vendor.email,
+                },
+              },
             ],
             from: {
               emailAddress: {
-                address: SENDER_EMAIL
-              }
-            }
-          }
+                address: SENDER_EMAIL,
+              },
+            },
+          },
         };
         await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
       }
@@ -1787,7 +1998,7 @@ async function sendParticipationReminderEmail(rfqId, selectedVendorIds) {
   }
 }
 
-// Endpoint for sending participation reminder emails
+// endpoint for sending participation reminder emails
 app.post("/api/send-reminder", async (req, res) => {
   const { rfqId, vendorIds } = req.body;
 
@@ -1807,7 +2018,7 @@ app.post("/api/send-reminder", async (req, res) => {
   }
 });
 
-// Function to check and update RFQ status based on the closing date and time
+// function to check and update RFQ status based on the closing date and time
 const updateRFQStatuses = async () => {
   try {
     const now = moment().tz("Asia/Kolkata");
@@ -1815,13 +2026,13 @@ const updateRFQStatuses = async () => {
 
     for (const rfq of rfqs) {
       if (rfq.status === "initial" && now.isAfter(rfq.initialQuoteEndTime)) {
-        // Transition from 'initial' to 'evaluation'
+        // transition from 'initial' to 'evaluation'
         rfq.status = "evaluation";
 
-        // Assign labels and trucks based on initial quotes
+        // assign labels and trucks based on initial quotes
         await assignInitialLabelsAndTrucks(rfq);
 
-        // Notify vendors
+        // notify vendors
         await sendInitialPhaseEmails(rfq);
 
         await rfq.save();
@@ -1829,7 +2040,7 @@ const updateRFQStatuses = async () => {
         rfq.status === "evaluation" &&
         now.isAfter(rfq.evaluationEndTime)
       ) {
-        // Transition from 'evaluation' to 'closed'
+        // transition from 'evaluation' to 'closed'
         rfq.status = "closed";
         await rfq.save();
       }
@@ -1839,7 +2050,7 @@ const updateRFQStatuses = async () => {
   }
 };
 
-// Schedule the status updates
+// schedule the status updates
 cron.schedule("* * * * *", updateRFQStatuses);
 
 // function to send reminder emails to vendors
@@ -1920,7 +2131,7 @@ cron.schedule("* * * * *", updateRFQStatuses);
               Time: ${rfq.eReverseTime}
 
               Best regards,
-              Premier Energies
+              Team LEAF.
             `,
           };
 
@@ -1955,11 +2166,11 @@ cron.schedule("* * * * *", updateRFQStatuses);
 
 // schedule the job to run every minute for testing
 //cron.schedule("*/720 * * * *", () => {
-//  console.log("Cron job execution triggered");
+//  console.log("Cron job execution triggered
 //  sendReminderEmails();
 //});
 
-// console.log("Cron job scheduled to run every minute");
+// console.log("Cron job scheduled to run every minute
 
 // start server
 const PORT = process.env.PORT || 5000;

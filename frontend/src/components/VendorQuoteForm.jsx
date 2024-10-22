@@ -21,6 +21,7 @@ const VendorQuoteForm = ({ username }) => {
   const [rfqStatus, setRfqStatus] = useState("");
   const [l1Price, setL1Price] = useState(null);
   const [isInitialQuoteSubmitted, setIsInitialQuoteSubmitted] = useState(false);
+  const [numberOfVehiclesPerDay, setNumberOfVehiclesPerDay] = useState("");
 
   // fetch rfq details and quote from backend
   useEffect(() => {
@@ -28,7 +29,7 @@ const VendorQuoteForm = ({ username }) => {
       // fetch rfq details from backend
       try {
         const response = await axios.get(
-          `https://petp.onrender.com/api/rfq/${rfqId}`
+          `http://localhost:5000/api/rfq/${rfqId}`
         );
         setRfqDetails(response.data);
         setRfqStatus(response.data.status);
@@ -40,7 +41,7 @@ const VendorQuoteForm = ({ username }) => {
 
         // fetch quote and number of trucks from backend
         const quoteResponse = await axios.get(
-          `https://petp.onrender.com/api/quotes/${rfqId}`
+          `http://localhost:5000/api/quotes/${rfqId}`
         );
         const existingQuote = quoteResponse.data.find(
           (q) => q.vendorName === username
@@ -50,6 +51,11 @@ const VendorQuoteForm = ({ username }) => {
           setIsInitialQuoteSubmitted(true);
           setQuote(existingQuote.price);
           setNumberOfTrucks(existingQuote.numberOfTrucks);
+          setNumberOfVehiclesPerDay(
+            existingQuote.numberOfVehiclesPerDay != null
+              ? existingQuote.numberOfVehiclesPerDay.toString()
+              : ""
+          );
           setvalidityPeriod(existingQuote.validityPeriod);
           setMessage(existingQuote.message);
           setVendorQuote(existingQuote);
@@ -73,11 +79,16 @@ const VendorQuoteForm = ({ username }) => {
 
     // type-checking
 
+    if (!numberOfVehiclesPerDay || numberOfVehiclesPerDay.trim() === '') {
+      newErrors.numberOfVehiclesPerDay = 'Number of Vehicles per Day is required.';
+      hasError = true;
+    }    
+
     if (!/^\d+$/.test(quote)) {
       newErrors.quote = "Quote must contain only digits.";
       hasError = true;
     }
-
+    
     if (!/^\d+$/.test(numberOfTrucks)) {
       newErrors.numberOfTrucks = "Number of Trucks must contain only digits.";
       hasError = true;
@@ -101,17 +112,18 @@ const VendorQuoteForm = ({ username }) => {
         message,
         vendorName: username,
         numberOfTrucks: Number(numberOfTrucks),
+        numberOfVehiclesPerDay: Number(numberOfVehiclesPerDay),
       };
 
       // update existing quote or create new quote
       if (vendorQuote) {
         await axios.put(
-          `https://petp.onrender.com/api/quote/${vendorQuote._id}`,
+          `http://localhost:5000/api/quote/${vendorQuote._id}`,
           quoteData
         );
         alert("Quote updated successfully!");
       } else {
-        await axios.post("https://petp.onrender.com/api/quote", quoteData);
+        await axios.post("http://localhost:5000/api/quote", quoteData);
         alert("Quote submitted successfully!");
       }
 
@@ -120,7 +132,7 @@ const VendorQuoteForm = ({ username }) => {
     } catch (error) {
       console.error("Error submitting quote:", error);
       if (error.response && error.response.data && error.response.data.error) {
-        // If the error comes from backend validation
+        // if the error comes from backend validation
         setErrors({ submit: error.response.data.error });
       } else {
         alert("Failed to submit quote. Please try again.");
@@ -133,6 +145,21 @@ const VendorQuoteForm = ({ username }) => {
   // handle input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "numberOfVehiclesPerDay") {
+      if (!/^\d{0,2}$/.test(value)) {
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          numberOfVehiclesPerDay: "Must be a number between 1 and 99.",
+        }));
+      } else {
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          numberOfVehiclesPerDay: "",
+        }));
+      }
+      setNumberOfVehiclesPerDay(value);
+    }
 
     // set quote, number of trucks and message
     if (name === "quote") {
@@ -355,6 +382,28 @@ const VendorQuoteForm = ({ username }) => {
           {errors.numberOfTrucks && (
             <p className="text-red-700 text-sm font-bold mt-1">
               {errors.numberOfTrucks}
+            </p>
+          )}
+        </div>
+
+        <div className="mb-4">
+          <label className="block mb-1">
+            Number of Vehicles You Will Provide Per Day
+          </label>
+          <input
+            type="number"
+            name="numberOfVehiclesPerDay"
+            value={numberOfVehiclesPerDay}
+            onChange={handleInputChange}
+            className="w-full p-2 border border-gray-300 rounded"
+            required
+            disabled={isLoading}
+            min={1}
+            max={99}
+          />
+          {errors.numberOfVehiclesPerDay && (
+            <p className="text-red-700 text-sm font-bold mt-1">
+              {errors.numberOfVehiclesPerDay}
             </p>
           )}
         </div>

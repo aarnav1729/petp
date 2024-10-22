@@ -10,7 +10,7 @@ const Accounts = () => {
 
   const fetchPendingAccounts = async () => {
     try {
-      const response = await axios.get("https://petp.onrender.com/api/pending-accounts");
+      const response = await axios.get("http://localhost:5000/api/pending-accounts");
       setPendingAccounts(response.data);
     } catch (error) {
       console.error("Error fetching pending accounts:", error);
@@ -19,7 +19,7 @@ const Accounts = () => {
 
   const approveAccount = async (id) => {
     try {
-      await axios.post(`https://petp.onrender.com/api/approve-account/${id}`);
+      await axios.post(`http://localhost:5000/api/approve-account/${id}`);
       // Remove the approved account from the list
       setPendingAccounts(pendingAccounts.filter((account) => account._id !== id));
     } catch (error) {
@@ -29,7 +29,7 @@ const Accounts = () => {
 
   const declineAccount = async (id) => {
     try {
-      await axios.post(`https://petp.onrender.com/api/decline-account/${id}`);
+      await axios.post(`http://localhost:5000/api/decline-account/${id}`);
       // Remove the declined account from the list
       setPendingAccounts(pendingAccounts.filter((account) => account._id !== id));
     } catch (error) {

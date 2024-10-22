@@ -22,7 +22,7 @@ const Login = ({ onLogin }) => {
       return;
     }
     try {
-      const response = await axios.post("https://petp.onrender.com/api/send-otp", {
+      const response = await axios.post("http://localhost:5000/api/send-otp", {
         email,
       });
       if (response.data.success) {
@@ -40,11 +40,11 @@ const Login = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (role === "admin" && username === "admin" && password === "admin") {
+    if (role === "admin" && username === "aarnav" && password === "aarnav") {
       onLogin(role, username);
     } else if ((role === "vendor" || role === "factory") && !isRegistering) {
       try {
-        const response = await axios.post("https://petp.onrender.com/api/login", {
+        const response = await axios.post("http://localhost:5000/api/login", {
           username,
           password,
           role,
@@ -52,11 +52,11 @@ const Login = ({ onLogin }) => {
         if (response.data.success) {
           onLogin(role, response.data.username);
         } else {
-          alert(response.data.message || "Invalid credentials");
+          alert(response.data.message || "Invalid username or password");
         }
       } catch (error) {
         console.error("Login error:", error);
-        alert("An error occurred during login. Please try again.");
+        alert("Invalid username or password");
       }
     } else if ((role === "vendor" || role === "factory") && isRegistering) {
       if (!otpSent) {
@@ -74,7 +74,7 @@ const Login = ({ onLogin }) => {
         // OTP has been sent, verify OTP
         try {
           const response = await axios.post(
-            "https://petp.onrender.com/api/verify-otp",
+            "http://localhost:5000/api/verify-otp",
             {
               email,
               otp: userOtp,
@@ -84,7 +84,7 @@ const Login = ({ onLogin }) => {
             // OTP verified, proceed to register
             try {
               const registerResponse = await axios.post(
-                "https://petp.onrender.com/api/register",
+                "http://localhost:5000/api/register",
                 {
                   username,
                   password,

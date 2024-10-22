@@ -28,6 +28,10 @@ const NewRFQForm = () => {
     RFQClosingTime: "",
     eReverseToggle: false,
     rfqType: "D2D",
+    initialQuoteEndTime: "",
+    evaluationEndTime: "",
+    address: "",
+    pincode: "",
   });
 
   const [vendors, setVendors] = useState([]);
@@ -785,7 +789,7 @@ const NewRFQForm = () => {
     try {
       setIsLoading(true);
       const response = await axios.get(
-        "https://petp.onrender.com/api/next-rfq-number"
+        "http://localhost:5000/api/next-rfq-number"
       );
       setFormData((prevData) => ({
         ...prevData,
@@ -801,7 +805,7 @@ const NewRFQForm = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("https://petp.onrender.com/api/vendors");
+      const response = await axios.get("http://localhost:5000/api/vendors");
       setVendors(response.data); // Set vendor data
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -881,6 +885,10 @@ const NewRFQForm = () => {
       if (!/^[a-zA-Z0-9]*$/.test(value)) {
         error = "This field must be alphanumeric.";
       }
+    } else if (name === "pincode") {
+      if (!/^\d{6}$/.test(value)) {
+        error = "Pincode must be exactly 6 digits and contain only numbers.";
+      }
     }
 
     // Add this validation block for 'weight'
@@ -946,6 +954,8 @@ const NewRFQForm = () => {
       const dataToSend = {
         ...formData,
         selectedVendors,
+        initialQuoteEndTime: formData.initialQuoteEndTime,
+        evaluationEndTime: formData.evaluationEndTime,
         eReverseDate: eReverseDateTime,
         itemType:
           formData.itemType === "Others"
@@ -961,7 +971,7 @@ const NewRFQForm = () => {
       delete dataToSend.customVehicleType;
 
       const response = await axios.post(
-        "https://petp.onrender.com/api/rfq",
+        "http://localhost:5000/api/rfq",
         dataToSend
       );
 
@@ -996,6 +1006,8 @@ const NewRFQForm = () => {
           RFQClosingTime: "",
           eReverseToggle: false,
           rfqType: "D2D",
+          initialQuoteEndTime: "",
+          evaluationEndTime: "",
         });
         fetchNextRFQNumber();
       } else {
@@ -1212,6 +1224,40 @@ const NewRFQForm = () => {
           </select>
         </div>
 
+        <div className="mb-4 md:col-span-3">
+          <label className="block text-xl font-medium text-black">
+            Destination Address (NOT including customer name)
+          </label>
+          <textarea
+            name="address"
+            value={formData.address}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            required
+          ></textarea>
+          {errors.address && (
+            <p className="text-red-600 font-bold mt-1">{errors.address}</p>
+          )}
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-xl font-medium text-black">
+            Pincode
+          </label>
+          <input
+            type="text"
+            name="pincode"
+            value={formData.pincode}
+            onChange={handleChange}
+            maxLength="6"
+            className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            required
+          />
+          {errors.pincode && (
+            <p className="text-red-600 font-bold mt-1">{errors.pincode}</p>
+          )}
+        </div> 
+
         <div className="mb-4">
           <label className="block text-xl font-medium text-black">
             Vehicle Type
@@ -1264,6 +1310,7 @@ const NewRFQForm = () => {
             <option value="">Select Additional Vehicle Details</option>
             <option value="20 Feet Container">20 Feet Container</option>
             <option value="40 Feet Container">40 Feet Container</option>
+            <option value="40 ft HBT Trailer">40 Feet HBT Trailer</option>
             <option value="40 HQ Container">40 HQ Container</option>
             <option value="32MXL Container">32MXL Container</option>
             <option value="32SXL Container">32SXL Container</option>
@@ -1372,6 +1419,34 @@ const NewRFQForm = () => {
             type="date"
             name="vehiclePlacementEndDate"
             value={formData.vehiclePlacementEndDate}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            required
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-xl font-medium text-black">
+            Initial Quote End Time
+          </label>
+          <input
+            type="datetime-local"
+            name="initialQuoteEndTime"
+            value={formData.initialQuoteEndTime}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            required
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-xl font-medium text-black">
+            Evaluation End Time
+          </label>
+          <input
+            type="datetime-local"
+            name="evaluationEndTime"
+            value={formData.evaluationEndTime}
             onChange={handleChange}
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required

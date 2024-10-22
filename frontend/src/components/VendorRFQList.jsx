@@ -12,7 +12,7 @@ const VendorRFQList = ({ username }) => {
   // fetch rfqs and vendor quotes from backend
   const fetchVendorQuotes = async () => {
     try {
-      const response = await axios.get("https://petp.onrender.com/api/quotes");
+      const response = await axios.get("http://localhost:5000/api/quotes");
       // filter quotes by vendor name
       const quotesByVendor = response.data.reduce((acc, quote) => {
         // set vendor quotes
@@ -31,7 +31,7 @@ const VendorRFQList = ({ username }) => {
   const fetchRFQs = async () => {
     try {
       const response = await axios.get(
-        `https://petp.onrender.com/api/rfqs/vendor/${username}`
+        `http://localhost:5000/api/rfqs/vendor/${username}`
       );
       setRfqs(response.data);
     } catch (error) {
