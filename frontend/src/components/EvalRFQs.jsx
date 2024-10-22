@@ -41,7 +41,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/rfq/${rfqId}`
+        `https://petp.onrender.com/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
       setRfqStatus(response.data.status);
@@ -53,7 +53,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchQuotes = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/quotes/${rfqId}`
+        `https://petp.onrender.com/api/quotes/${rfqId}`
       );
       setQuotes(response.data);
       // Store a deep copy of the original quotes
@@ -65,7 +65,7 @@ const EvalRFQs = ({ userRole }) => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/vendors");
+      const response = await axios.get("https://petp.onrender.com/api/vendors");
       setVendors(response.data);
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -236,7 +236,7 @@ const EvalRFQs = ({ userRole }) => {
         return;
       }  
 
-      await axios.put(`http://localhost:5000/api/quote/factory/${quote._id}`, {
+      await axios.put(`https://petp.onrender.com/api/quote/factory/${quote._id}`, {
         price: quote.price,
         trucksAllotted: quote.trucksAllotted,
       });
@@ -253,7 +253,7 @@ const EvalRFQs = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/send-reminder",
+        "https://petp.onrender.com/api/send-reminder",
         {
           rfqId,
           vendorIds: reminderSelectedVendors,
@@ -274,7 +274,7 @@ const EvalRFQs = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/rfq/${rfqId}/add-vendors`,
+        `https://petp.onrender.com/api/rfq/${rfqId}/add-vendors`,
         {
           vendorIds: addVendorsSelectedVendors,
         }
@@ -299,7 +299,7 @@ const EvalRFQs = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/rfq/${rfqId}/finalize`
+        `https://petp.onrender.com/api/rfq/${rfqId}/finalize`
       );
       setStatusMessage("RFQ finalized successfully.");
       // Update the RFQ details and quotes to reflect the new status and labels
