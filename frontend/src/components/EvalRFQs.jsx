@@ -163,7 +163,7 @@ const EvalRFQs = ({ userRole }) => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/rfq/${rfqId}/finalize-allocation`,
+        `https://petp.onrender.com/api/rfq/${rfqId}/finalize-allocation`,
         {
           logisticsAllocation,
           finalizeReason: isIdentical ? "" : finalizeReason,

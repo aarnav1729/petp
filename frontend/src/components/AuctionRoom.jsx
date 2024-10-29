@@ -16,7 +16,7 @@ const AuctionRoom = ({ username, role }) => {
   useEffect(() => {
     const fetchRFQDetails = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/rfq/${rfqId}`);
+        const response = await axios.get(`https://petp.onrender.com/api/rfq/${rfqId}`);
         const rfq = response.data;
 
         setRfqNumber(rfq.RFQNumber);
@@ -24,7 +24,7 @@ const AuctionRoom = ({ username, role }) => {
 
         if (role === "vendor") {
           // Prepopulate bid inputs with the current vendor's existing bid if it exists
-          const bidResponse = await axios.get(`http://localhost:5000/api/quotes/${rfqId}`);
+          const bidResponse = await axios.get(`https://petp.onrender.com/api/quotes/${rfqId}`);
           const existingBid = bidResponse.data.find(quote => quote.vendorName === vendorName);
 
           if (existingBid) {
@@ -66,7 +66,7 @@ const AuctionRoom = ({ username, role }) => {
   useEffect(() => {
     const fetchBids = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/quotes/${rfqId}`);
+        const response = await axios.get(`https://petp.onrender.com/api/quotes/${rfqId}`);
         if (role === "vendor") {
           setVendorQuotes(response.data.reduce((acc, quote) => {
             if (quote.vendorName === vendorName) {
@@ -124,7 +124,7 @@ const AuctionRoom = ({ username, role }) => {
     if (!isNaN(price) && !isNaN(numberOfTrucks)) {
       try {
         // Fetch the current RFQ details to get the eReverse end time
-        const rfqResponse = await axios.get(`http://localhost:5000/api/rfq/${rfqId}`);
+        const rfqResponse = await axios.get(`https://petp.onrender.com/api/rfq/${rfqId}`);
         const rfq = rfqResponse.data;
         const eReverseDateTime = moment.tz(
           `${moment(rfq.eReverseDate).format('YYYY-MM-DD')} ${rfq.eReverseTime}`,
@@ -155,7 +155,7 @@ const AuctionRoom = ({ username, role }) => {
         if (vendorQuotes[rfqId]) {
           // Update existing bid
           await axios.put(
-            `http://localhost:5000/api/quote/${vendorQuotes[rfqId]._id}`,
+            `https://petp.onrender.com/api/quote/${vendorQuotes[rfqId]._id}`,
             {
               rfqId,
               vendorName,
@@ -166,7 +166,7 @@ const AuctionRoom = ({ username, role }) => {
           );
         } else {
           // Create a new bid
-          await axios.post("http://localhost:5000/api/quote", {
+          await axios.post("https://petp.onrender.com/api/quote", {
             rfqId,
             vendorName,
             quote: price,
@@ -176,7 +176,7 @@ const AuctionRoom = ({ username, role }) => {
         }
 
         // Fetch updated bids
-        const response = await axios.get(`http://localhost:5000/api/quotes/${rfqId}`);
+        const response = await axios.get(`https://petp.onrender.com/api/quotes/${rfqId}`);
         const labeledQuotes = assignQuoteLabels(response.data, numberOfVehicles);
         setBids(labeledQuotes);
 

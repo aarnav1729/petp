@@ -118,12 +118,12 @@ const VendorQuoteForm = ({ username }) => {
       // update existing quote or create new quote
       if (vendorQuote) {
         await axios.put(
-          `http://localhost:5000/api/quote/${vendorQuote._id}`,
+          `https://petp.onrender.com/api/quote/${vendorQuote._id}`,
           quoteData
         );
         alert("Quote updated successfully!");
       } else {
-        await axios.post("http://localhost:5000/api/quote", quoteData);
+        await axios.post("https://petp.onrender.com/api/quote", quoteData);
         alert("Quote submitted successfully!");
       }
 
