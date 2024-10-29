@@ -442,7 +442,9 @@ app.post("/api/login", async (req, res) => {
   // Check if the user is admin
   if (username === "aarnav" && password === "aarnav") {
     // Return success response with role 'admin'
-    return res.status(200).json({ success: true, role: 'admin', username: 'aarnav' });
+    return res
+      .status(200)
+      .json({ success: true, role: "admin", username: "aarnav" });
   }
 
   try {
@@ -451,7 +453,9 @@ app.post("/api/login", async (req, res) => {
 
     if (user) {
       if (user.status === "approved") {
-        return res.status(200).json({ success: true, role: user.role, username: user.username });
+        return res
+          .status(200)
+          .json({ success: true, role: user.role, username: user.username });
       } else {
         return res
           .status(403)
@@ -1676,7 +1680,7 @@ async function sendInitialPhaseEmails(rfq) {
   }
 }
 
-// Endpoint to finalize RFQ
+// endpoint to finalize RFQ
 app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
   try {
     const { id } = req.params;
@@ -1689,8 +1693,8 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
     }
 
     // Check if RFQ is already closed
-    if (rfq.status === 'closed') {
-      return res.status(400).json({ error: 'RFQ has already been finalized.' });
+    if (rfq.status === "closed") {
+      return res.status(400).json({ error: "RFQ has already been finalized." });
     }
 
     // Fetch all quotes for this RFQ
@@ -1751,14 +1755,18 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
 
       // Prepare tables for email
       const generateTableHTML = (allocations, title) => {
-        let tableRows = allocations.map((alloc) => `
+        let tableRows = allocations
+          .map(
+            (alloc) => `
           <tr>
             <td>${alloc.vendorName}</td>
             <td>${alloc.price}</td>
             <td>${alloc.trucksAllotted}</td>
             <td>${alloc.label}</td>
           </tr>
-        `).join('');
+        `
+          )
+          .join("");
 
         return `
           <h3>${title}</h3>
@@ -1778,31 +1786,43 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
         `;
       };
 
-      const leafAllocationTable = generateTableHTML(leafAllocation, 'LEAF Allocation');
-      const logisticsAllocationTable = generateTableHTML(logisticsAllocation, 'Logistics Allocation');
+      const leafAllocationTable = generateTableHTML(
+        leafAllocation,
+        "LEAF Allocation"
+      );
+      const logisticsAllocationTable = generateTableHTML(
+        logisticsAllocation,
+        "Logistics Allocation"
+      );
+
+      // Define reasonContent
+      const reasonContent = finalizeReason
+        ? `<p><strong>Reason given for Difference:</strong> ${finalizeReason}</p>`
+        : "";
 
       const emailContent = {
         message: {
-          subject: 'Mismatch in Allocation',
+          subject: "Mismatch in Allocation",
           body: {
-            contentType: 'HTML',
+            contentType: "HTML",
             content: `
               <p>This is a LEAF auto-alert to notify you of a mismatch between LEAF and Logistics Allocation for <strong>${rfq.RFQNumber}</strong>.</p>
               ${leafAllocationTable}
               ${logisticsAllocationTable}
               <p><strong>Total LEAF Price:</strong> ${totalLeafPrice}</p>
               <p><strong>Total Logistics Price:</strong> ${totalLogisticsPrice}</p>
+              ${reasonContent}
             `,
           },
           toRecipients: [
             {
               emailAddress: {
-                address: 'aarnav.singh@premierenergies.com',
+                address: "aarnav.singh@premierenergies.com",
               },
             },
             {
               emailAddress: {
-                address: 'vishnu.hazari@premierenergies.com',
+                address: "vishnu.hazari@premierenergies.com",
               },
             },
           ],
@@ -1814,13 +1834,15 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
         },
       };
 
-      await client
-        .api(`/users/${SENDER_EMAIL}/sendMail`)
-        .post(emailContent);
+      try {
+        await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
+      } catch (error) {
+        console.error("Error sending mismatch email:", error);
+      }
     }
 
     // Update the RFQ status to 'closed' and save the finalizeReason
-    rfq.status = 'closed';
+    rfq.status = "closed";
     if (finalizeReason) {
       rfq.finalizeReason = finalizeReason;
     }
@@ -1868,7 +1890,8 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
     }
 
     res.status(200).json({
-      message: "Allocation finalized and emails sent to vendors.",
+      message:
+        "Allocation finalized and emails sent to vendors and management.",
     });
   } catch (error) {
     console.error("Error finalizing allocation:", error);
@@ -1970,9 +1993,7 @@ app.put("/api/quote/factory/:quoteId", async (req, res) => {
       const minL1Trucks = Math.ceil(rfq.numberOfVehicles * 0.39);
 
       if (price > existingQuote.price) {
-        return res
-          .status(400)
-          .json({ error: "L1 price cannot be increased." });
+        return res.status(400).json({ error: "L1 price cannot be increased." });
       }
 
       if (trucksAllotted < minL1Trucks) {
@@ -1981,18 +2002,16 @@ app.put("/api/quote/factory/:quoteId", async (req, res) => {
         });
       }
     }
-    
+
     // Proceed to update the quote
     existingQuote.price = price;
     existingQuote.trucksAllotted = trucksAllotted;
     await existingQuote.save();
 
-    res
-      .status(200)
-      .json({
-        message: "Quote updated successfully",
-        updatedQuote: existingQuote,
-      });
+    res.status(200).json({
+      message: "Quote updated successfully",
+      updatedQuote: existingQuote,
+    });
   } catch (error) {
     console.error("Error updating quote:", error);
     res.status(500).json({ error: "Failed to update quote" });

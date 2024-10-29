@@ -36,7 +36,7 @@ const VendorQuoteForm = ({ username }) => {
         setL1Price(response.data.l1Price);
 
         // Calculate minimum trucks required (39% of total, rounded down)
-        const minTrucks = Math.floor(0.39 * response.data.numberOfVehicles);
+        const minTrucks = Math.ceil(0.39 * response.data.numberOfVehicles);
         setMinTrucksRequired(minTrucks);
 
         // fetch quote and number of trucks from backend
