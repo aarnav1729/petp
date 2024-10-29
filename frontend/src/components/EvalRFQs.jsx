@@ -7,22 +7,16 @@ const EvalRFQs = ({ userRole }) => {
   const navigate = useNavigate();
   const [rfqDetails, setRfqDetails] = useState(null);
   const [quotes, setQuotes] = useState([]);
-  const [originalQuotes, setOriginalQuotes] = useState([]); // To store original quotes
   const [vendors, setVendors] = useState([]);
   const [rfqStatus, setRfqStatus] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
-
-  // State variables for vendor selections and modals
-  const [reminderSelectedVendors, setReminderSelectedVendors] = useState([]);
-  const [addVendorsSelectedVendors, setAddVendorsSelectedVendors] = useState(
-    []
-  );
-  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
-  const [isAddVendorsModalOpen, setIsAddVendorsModalOpen] = useState(false);
+  const [leafAllocation, setLeafAllocation] = useState([]);
+  const [logisticsAllocation, setLogisticsAllocation] = useState([]);
+  const [totalLeafPrice, setTotalLeafPrice] = useState(0);
+  const [totalLogisticsPrice, setTotalLogisticsPrice] = useState(0);
   const [isFinalizeModalOpen, setIsFinalizeModalOpen] = useState(false);
+  const [finalizeReason, setFinalizeReason] = useState("");
   const [isFinalizing, setIsFinalizing] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [totalTrucksAllotted, setTotalTrucksAllotted] = useState(0);
 
   useEffect(() => {
     fetchRFQDetails();
@@ -31,12 +25,20 @@ const EvalRFQs = ({ userRole }) => {
   }, [rfqId]);
 
   useEffect(() => {
-    const total = quotes.reduce(
-      (sum, quote) => sum + (quote.trucksAllotted || 0),
-      0
-    );
-    setTotalTrucksAllotted(total);
-  }, [quotes]);
+    if (rfqDetails && quotes.length > 0) {
+      const leafAlloc = assignLeafAllocation(quotes, rfqDetails.numberOfVehicles);
+      setLeafAllocation(leafAlloc);
+      calculateTotalLeafPrice(leafAlloc);
+
+      // Initialize logistics allocation with vendors who placed bids
+      const logisticsAlloc = assignLogisticsAllocation(leafAlloc);
+      setLogisticsAllocation(logisticsAlloc);
+    }
+  }, [rfqDetails, quotes]);
+
+  useEffect(() => {
+    calculateTotalLogisticsPrice(logisticsAllocation);
+  }, [logisticsAllocation]);
 
   const fetchRFQDetails = async () => {
     try {
@@ -56,8 +58,6 @@ const EvalRFQs = ({ userRole }) => {
         `https://petp.onrender.com/api/quotes/${rfqId}`
       );
       setQuotes(response.data);
-      // Store a deep copy of the original quotes
-      setOriginalQuotes(JSON.parse(JSON.stringify(response.data)));
     } catch (error) {
       console.error("Error fetching quotes:", error);
     }
@@ -72,248 +72,123 @@ const EvalRFQs = ({ userRole }) => {
     }
   };
 
-  const assignQuoteLabels = (quotes, requiredTrucks) => {
+  // Assign LEAF Allocation
+  const assignLeafAllocation = (quotes, requiredTrucks) => {
     if (!requiredTrucks || requiredTrucks <= 0) return quotes;
 
-    // Sort the quotes
-    const sortedQuotes = [...quotes].sort((a, b) => {
-      if (a.price !== b.price) {
-        return a.price - b.price; // Ascending price
-      } else {
-        return new Date(a.createdAt) - new Date(b.createdAt); // Earlier bids first
-      }
-    });
-
+    // Sort quotes by price (ascending)
+    const sortedQuotes = [...quotes].sort((a, b) => a.price - b.price);
     let totalTrucks = 0;
-    const result = [];
-    let i = 0;
-    let labelCounter = 1;
 
-    while (i < sortedQuotes.length) {
-      const currentPrice = sortedQuotes[i].price;
-      const samePriceQuotes = [];
-
-      // Collect all quotes with the same price
-      while (
-        i < sortedQuotes.length &&
-        sortedQuotes[i].price === currentPrice
-      ) {
-        samePriceQuotes.push(sortedQuotes[i]);
-        i++;
-      }
-
-      // Assign the same label to all vendors with the same price
-      const label = `L${labelCounter}`;
-
-      // Calculate total trucks offered by vendors at this price
-      const totalOfferedTrucks = samePriceQuotes.reduce(
-        (sum, q) => sum + q.numberOfTrucks,
-        0
-      );
-
-      // Calculate remaining trucks to allocate
-      const remainingTrucks = requiredTrucks - totalTrucks;
-
-      // Maximum trucks that can be allocated in this group
-      const maxAllocatableTrucks = Math.min(
-        totalOfferedTrucks,
-        remainingTrucks
-      );
-
-      // Allocate trucks proportionally based on trucks offered
-      let groupTotalAllocated = 0;
-      const allocation = samePriceQuotes.map((quote) => {
-        const maxPossible = quote.numberOfTrucks;
-
-        // Use edited trucksAllotted if available
-        let trucksToAllot = quote.isEdited
-          ? quote.trucksAllotted
-          : Math.floor(
-              (maxPossible / totalOfferedTrucks) * maxAllocatableTrucks
-            );
-
-        // Ensure we don't allocate more than offered
-        trucksToAllot = Math.min(trucksToAllot, maxPossible);
-
-        groupTotalAllocated += trucksToAllot;
-
+    return sortedQuotes.map((quote, index) => {
+      if (totalTrucks < requiredTrucks) {
+        const trucksToAllot = Math.min(
+          quote.numberOfTrucks,
+          requiredTrucks - totalTrucks
+        );
+        totalTrucks += trucksToAllot;
         return {
           ...quote,
-          label,
+          label: `L${index + 1}`,
           trucksAllotted: trucksToAllot,
         };
-      });
-
-      // Update total trucks allocated
-      totalTrucks += groupTotalAllocated;
-
-      result.push(...allocation);
-
-      labelCounter++;
-    }
-
-    // For any remaining vendors, set label to "-" and trucksAllotted to 0
-    while (i < sortedQuotes.length) {
-      const quote = sortedQuotes[i];
-      result.push({
-        ...quote,
-        label: "-",
-        trucksAllotted: 0,
-      });
-      i++;
-    }
-
-    return result;
+      }
+      return { ...quote, label: "-", trucksAllotted: 0 };
+    });
   };
 
-  const labeledQuotes = rfqDetails
-    ? assignQuoteLabels(quotes, rfqDetails?.numberOfVehicles)
-    : [];
+  // Assign Logistics Allocation (Labels assigned automatically)
+  const assignLogisticsAllocation = (leafAlloc) => {
+    // Assign labels automatically based on price (ascending)
+    const sortedAllocations = [...leafAlloc].sort((a, b) => a.price - b.price);
+    return sortedAllocations.map((alloc, index) => ({
+      vendorName: alloc.vendorName,
+      trucksOffered: alloc.numberOfTrucks,
+      price: alloc.price,
+      trucksAllotted: alloc.trucksAllotted,
+      label: `L${index + 1}`,
+    }));
+  };
 
-  const handlePriceChange = (quoteId, value) => {
-    setQuotes((prevQuotes) =>
-      prevQuotes.map((quote) =>
-        quote._id === quoteId ? { ...quote, price: parseFloat(value) } : quote
-      )
+  // Calculate Total LEAF Price
+  const calculateTotalLeafPrice = (allocations) => {
+    const total = allocations.reduce(
+      (sum, quote) => sum + quote.price * quote.trucksAllotted,
+      0
     );
+    setTotalLeafPrice(total);
   };
 
-  const handleTrucksAllottedChange = (quoteId, value) => {
-    setQuotes((prevQuotes) =>
-      prevQuotes.map((quote) => {
-        if (quote._id === quoteId) {
-          const newValue = parseInt(value, 10) || 0;
-          return { ...quote, trucksAllotted: newValue, isEdited: true };
-        }
-        return quote;
-      })
+  // Handle Logistics Allocation Inputs
+  const handleLogisticsInputChange = (index, field, value) => {
+    setLogisticsAllocation((prevAllocations) => {
+      const updatedAllocations = [...prevAllocations];
+      updatedAllocations[index][field] =
+        field === "price" ? parseFloat(value) : parseInt(value);
+      return updatedAllocations;
+    });
+  };
+
+  // Calculate Total Logistics Price
+  const calculateTotalLogisticsPrice = (allocations) => {
+    const total = allocations.reduce(
+      (sum, alloc) => sum + alloc.price * alloc.trucksAllotted,
+      0
     );
+    setTotalLogisticsPrice(total);
   };
 
-  const updateQuote = async (quote) => {
-    try {
-      const originalQuote = originalQuotes.find((q) => q._id === quote._id);
+  // Finalize Allocation
+  const finalizeAllocation = async () => {
+    // Prepare data for comparison
+    const leafAllocData = leafAllocation.map((alloc) => ({
+      vendorName: alloc.vendorName,
+      trucksAllotted: alloc.trucksAllotted,
+    }));
+    const logisticsAllocData = logisticsAllocation.map((alloc) => ({
+      vendorName: alloc.vendorName,
+      trucksAllotted: alloc.trucksAllotted,
+    }));
 
-      const totalAllocated = quotes.reduce(
-        (sum, q) =>
-          sum + (q._id === quote._id ? quote.trucksAllotted : q.trucksAllotted),
-        0
-      );
+    // Check if Logistics Allocation matches LEAF Allocation
+    const isIdentical =
+      JSON.stringify(leafAllocData) === JSON.stringify(logisticsAllocData);
 
-      if (!originalQuote) {
-        alert("Original quote not found.");
-        return;
-      }
-
-      const isL1 = quote.label === "L1";
-
-      let canUpdate = true;
-      let errorMessage = "";
-
-      if (totalAllocated !== rfqDetails.numberOfVehicles) {
-        alert(
-          `Total trucks allotted: (${totalAllocated}) does not match required number of vehicles: (${rfqDetails.numberOfVehicles}).`
-        );
-        return;
-      }
-
-      if (isL1) {
-        const minL1Trucks = Math.ceil(rfqDetails.numberOfVehicles * 0.39);
-  
-        if (quote.price > originalQuote.price) {
-          canUpdate = false;
-          errorMessage = "L1 price cannot be increased.";
-        }
-  
-        if (quote.trucksAllotted < minL1Trucks) {
-          canUpdate = false;
-          errorMessage = `L1 trucks allotted cannot be less than 39% of total trucks (${minL1Trucks}).`;
-        }
-      }
-  
-      if (!canUpdate) {
-        alert(errorMessage);
-        return;
-      }  
-
-      await axios.put(`https://petp.onrender.com/api/quote/factory/${quote._id}`, {
-        price: quote.price,
-        trucksAllotted: quote.trucksAllotted,
-      });
-      alert("Quote updated successfully.");
-      await fetchQuotes();
-    } catch (error) {
-      console.error("Error updating quote:", error);
-      alert(error.response?.data?.error || "Failed to update quote.");
+    if (!isIdentical && finalizeReason.trim() === "") {
+      alert("Please provide a reason for the difference in allocation.");
+      return;
     }
-  };
 
-  const sendParticipationReminder = async () => {
-    setIsSending(true);
-    setStatusMessage("");
-    try {
-      const response = await axios.post(
-        "https://petp.onrender.com/api/send-reminder",
-        {
-          rfqId,
-          vendorIds: reminderSelectedVendors,
-        }
-      );
-
-      setStatusMessage(response.data.message || "Reminder sent successfully!");
-    } catch (error) {
-      setStatusMessage("Error sending participation reminder.");
-    } finally {
-      setIsSending(false);
-      setIsReminderModalOpen(false);
-    }
-  };
-
-  const addVendorsToRFQ = async () => {
-    setIsSending(true);
-    setStatusMessage("");
-    try {
-      const response = await axios.post(
-        `https://petp.onrender.com/api/rfq/${rfqId}/add-vendors`,
-        {
-          vendorIds: addVendorsSelectedVendors,
-        }
-      );
-
-      setStatusMessage(response.data.message || "Vendors added successfully!");
-
-      // Re-fetch the RFQ details to update the selectedVendors list
-      await fetchRFQDetails();
-      // Reset the selected vendors for adding
-      setAddVendorsSelectedVendors([]);
-    } catch (error) {
-      setStatusMessage("Error adding vendors to RFQ.");
-    } finally {
-      setIsSending(false);
-      setIsAddVendorsModalOpen(false);
-    }
-  };
-
-  const finalizeRFQ = async () => {
     setIsFinalizing(true);
-    setStatusMessage("");
+
     try {
       const response = await axios.post(
-        `https://petp.onrender.com/api/rfq/${rfqId}/finalize`
+        `http://localhost:5000/api/rfq/${rfqId}/finalize-allocation`,
+        {
+          logisticsAllocation,
+          finalizeReason: isIdentical ? "" : finalizeReason,
+        }
       );
-      setStatusMessage("RFQ finalized successfully.");
-      // Update the RFQ details and quotes to reflect the new status and labels
-      await fetchRFQDetails();
-      await fetchQuotes();
-      // Close the modal
+
+      setStatusMessage("Allocation finalized and emails sent to vendors.");
       setIsFinalizeModalOpen(false);
+      // Optionally, redirect or update the RFQ status
     } catch (error) {
-      console.error("Error finalizing RFQ:", error);
-      setStatusMessage("Error finalizing RFQ.");
+      console.error("Error finalizing allocation:", error);
+      setStatusMessage("Failed to finalize allocation.");
     } finally {
       setIsFinalizing(false);
     }
   };
+
+  // Check if all trucks are allotted
+  const totalTrucksAllotted = logisticsAllocation.reduce(
+    (sum, alloc) => sum + (alloc.trucksAllotted || 0),
+    0
+  );
+
+  const allTrucksAllotted =
+    totalTrucksAllotted === rfqDetails?.numberOfVehicles;
 
   return (
     <div className="container mx-auto px-3 py-7 bg-white rounded-lg shadow-lg">
@@ -328,16 +203,9 @@ const EvalRFQs = ({ userRole }) => {
         <div>
           <h2 className="text-2xl font-bold mb-4">{rfqDetails.RFQNumber}</h2>
 
-          <div className="mt-4">
-            <p>
-              Total Trucks Allotted: <strong>{totalTrucksAllotted}</strong> /{" "}
-              {rfqDetails?.numberOfVehicles}
-            </p>
-          </div>
-
-          {/* Vendor Quotes */}
+          {/* LEAF Allocation */}
           <div>
-            <h3 className="font-bold mb-2">Vendor Quotes</h3>
+            <h3 className="font-bold mb-2">LEAF Allocation</h3>
             <div className="overflow-x-auto rounded-lg">
               <table className="min-w-full divide-y divide-black">
                 <thead className="bg-green-600 rounded-lg">
@@ -346,7 +214,7 @@ const EvalRFQs = ({ userRole }) => {
                       Vendor Name
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                      Number of Trucks Offered
+                      Trucks Offered
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Quote
@@ -357,13 +225,10 @@ const EvalRFQs = ({ userRole }) => {
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Trucks Allotted
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                      Actions
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-black">
-                  {labeledQuotes.map((quote) => (
+                  {leafAllocation.map((quote) => (
                     <tr key={quote._id} className="hover:bg-blue-200">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {quote.vendorName}
@@ -371,263 +236,211 @@ const EvalRFQs = ({ userRole }) => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {quote.numberOfTrucks}
                       </td>
-
-                      {/* Price Input */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        <input
-                          type="number"
-                          value={quote.price}
-                          onChange={(e) =>
-                            handlePriceChange(quote._id, e.target.value)
-                          }
-                          className="p-1 border"
-                          disabled={rfqStatus === "closed"}
-                        />
+                        {quote.price}
                       </td>
-
-                      {/* Label */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {quote.label}
                       </td>
-
-                      {/* Trucks Allotted Input */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        <input
-                          type="number"
-                          value={quote.trucksAllotted}
-                          onChange={(e) =>
-                            handleTrucksAllottedChange(
-                              quote._id,
-                              e.target.value
-                            )
-                          }
-                          className="p-1 border"
-                          disabled={rfqStatus === "closed"}
-                        />
-                      </td>
-
-                      {/* Update Button */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        {rfqStatus !== "closed" && (
-                          <button
-                            onClick={() => updateQuote(quote)}
-                            className="bg-blue-500 text-white px-2 py-1 rounded"
-                          >
-                            Update
-                          </button>
-                        )}
+                        {quote.trucksAllotted}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-
-            {/* Buttons for Actions */}
-            <div className="mt-6 flex justify-center">
-              <button
-                className="text-white bg-blue-500 hover:bg-blue-700 font-bold py-2 px-4 rounded-full mr-2"
-                onClick={() => setIsReminderModalOpen(true)}
-              >
-                Send Participation Reminder
-              </button>
-
-              <button
-                className="text-white bg-green-500 hover:bg-green-700 font-bold py-2 px-4 rounded-full"
-                onClick={() => setIsAddVendorsModalOpen(true)}
-              >
-                Add Vendors to RFQ
-              </button>
-
-              <button
-                className={`text-white bg-red-500 hover:bg-red-700 font-bold py-2 px-4 rounded-full ml-2 ${
-                  totalTrucksAllotted !== rfqDetails.numberOfVehicles
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-                onClick={() => setIsFinalizeModalOpen(true)}
-                disabled={totalTrucksAllotted !== rfqDetails.numberOfVehicles}
-              >
-                Finalize
-              </button>
+            {/* Total LEAF Price */}
+            <div className="mt-2">
+              <p className="text-right font-bold">
+                Total LEAF Price: {totalLeafPrice}
+              </p>
             </div>
+          </div>
 
-            {/* Send Participation Reminder Modal */}
-            {isReminderModalOpen && (
-              <div className="fixed z-50 inset-0 overflow-y-auto">
-                <div className="flex items-center justify-center min-h-screen">
-                  <div className="bg-white p-6 rounded-lg shadow-lg w-3/4">
-                    <h2 className="text-xl font-bold mb-4">
-                      Select Vendors for Reminder
-                    </h2>
-                    <ul className="mb-4">
-                      {vendors.map((vendor) => (
-                        <li key={vendor._id} className="flex items-center mb-2">
-                          <input
-                            type="checkbox"
-                            checked={reminderSelectedVendors.includes(
-                              vendor._id
-                            )}
-                            onChange={() =>
-                              setReminderSelectedVendors((prevSelected) =>
-                                prevSelected.includes(vendor._id)
-                                  ? prevSelected.filter(
-                                      (id) => id !== vendor._id
-                                    )
-                                  : [...prevSelected, vendor._id]
-                              )
-                            }
-                            className="mr-2"
-                          />
-                          {vendor.vendorName}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="flex justify-end">
-                      <button
-                        className="mr-4 bg-gray-300 hover:bg-gray-400 text-black py-2 px-4 rounded"
-                        onClick={() => setIsReminderModalOpen(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${
-                          isSending ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                        onClick={sendParticipationReminder}
-                        disabled={isSending}
-                      >
-                        {isSending ? "Sending..." : "Send Reminder"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* Logistics Allocation */}
+          <div className="mt-8">
+            <h3 className="font-bold mb-2">Logistics Allocation</h3>
+            <div className="overflow-x-auto rounded-lg">
+              <table className="min-w-full divide-y divide-black">
+                <thead className="bg-blue-600 rounded-lg">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Vendor Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Trucks Offered
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Price
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Trucks Allotted
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Label
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-black">
+                  {logisticsAllocation.map((alloc, index) => (
+                    <tr key={index} className="hover:bg-blue-200">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {alloc.vendorName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {alloc.trucksOffered}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        <input
+                          type="number"
+                          value={alloc.price}
+                          onChange={(e) =>
+                            handleLogisticsInputChange(
+                              index,
+                              "price",
+                              e.target.value
+                            )
+                          }
+                          className="p-1 border"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        <input
+                          type="number"
+                          value={alloc.trucksAllotted}
+                          onChange={(e) =>
+                            handleLogisticsInputChange(
+                              index,
+                              "trucksAllotted",
+                              e.target.value
+                            )
+                          }
+                          className="p-1 border"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {alloc.label}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Total Logistics Price */}
+            <div className="mt-2">
+              <p className="text-right font-bold">
+                Total Logistics Price: {totalLogisticsPrice}
+              </p>
+            </div>
+          </div>
 
-            {/* Add Vendors to RFQ Modal */}
-            {isAddVendorsModalOpen && (
-              <div className="fixed z-50 inset-0 overflow-y-auto">
-                <div className="flex items-center justify-center min-h-screen">
-                  <div className="bg-white p-6 rounded-lg shadow-lg w-3/4">
-                    <h2 className="text-xl font-bold mb-4">
-                      Select Vendors to Add
-                    </h2>
-                    <ul className="mb-4">
-                      {vendors.map((vendor) => (
-                        <li key={vendor._id} className="flex items-center mb-2">
-                          <input
-                            type="checkbox"
-                            checked={addVendorsSelectedVendors.includes(
-                              vendor._id
-                            )}
-                            onChange={() =>
-                              setAddVendorsSelectedVendors((prevSelected) =>
-                                prevSelected.includes(vendor._id)
-                                  ? prevSelected.filter(
-                                      (id) => id !== vendor._id
-                                    )
-                                  : [...prevSelected, vendor._id]
-                              )
-                            }
-                            className="mr-2"
-                          />
-                          {vendor.vendorName}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="flex justify-end">
-                      <button
-                        className="mr-4 bg-gray-300 hover:bg-gray-400 text-black py-2 px-4 rounded"
-                        onClick={() => setIsAddVendorsModalOpen(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className={`bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-lg ${
-                          isSending ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                        onClick={addVendorsToRFQ}
-                        disabled={isSending}
-                      >
-                        {isSending ? "Adding..." : "Add Vendors"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* Finalize Button */}
+          <div className="mt-6 flex justify-center">
+            <button
+              className={`text-white bg-red-500 hover:bg-red-700 font-bold py-2 px-4 rounded-full ml-2 ${
+                allTrucksAllotted ? "" : "opacity-50 cursor-not-allowed"
+              }`}
+              onClick={() => setIsFinalizeModalOpen(true)}
+              disabled={!allTrucksAllotted}
+            >
+              Finalize
+            </button>
+          </div>
 
-            {/* Finalize Modal */}
-            {isFinalizeModalOpen && (
-              <div className="fixed z-50 inset-0 overflow-y-auto">
-                <div className="flex items-center justify-center min-h-screen">
-                  <div className="bg-white p-6 rounded-lg shadow-lg w-3/4">
-                    <h2 className="text-xl font-bold mb-4">Finalize RFQ</h2>
-                    <p>Truck Requirement: {rfqDetails.numberOfVehicles}</p>
-                    <table className="min-w-full divide-y divide-black mt-4">
-                      <thead className="bg-gray-200">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                            Vendor Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                            Label
-                          </th>
-                          <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                            Price
-                          </th>
-                          <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                            Trucks Allotted
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-black">
-                        {labeledQuotes.map((quote) => (
-                          <tr key={quote._id}>
+          {/* Finalize Modal */}
+          {isFinalizeModalOpen && (
+            <div className="fixed z-50 inset-0 overflow-y-auto">
+              <div className="flex items-center justify-center min-h-screen">
+                <div className="bg-white p-6 rounded-lg shadow-lg w-3/4">
+                  <h2 className="text-xl font-bold mb-4">Finalize Allocation</h2>
+                  {/* Display Logistics Allocation */}
+                  <table className="min-w-full divide-y divide-black mt-4">
+                    <thead className="bg-gray-200">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                          Vendor Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                          Price
+                        </th>
+                        <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                          Trucks Allotted
+                        </th>
+                        <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                          Label
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-black">
+                      {logisticsAllocation
+                        .filter((alloc) => alloc.trucksAllotted > 0)
+                        .map((alloc, index) => (
+                          <tr key={index}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                              {quote.vendorName}
+                              {alloc.vendorName}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                              {quote.label}
+                              {alloc.price}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                              {quote.price}
+                              {alloc.trucksAllotted}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                              {quote.trucksAllotted}
+                              {alloc.label}
                             </td>
                           </tr>
                         ))}
-                      </tbody>
-                    </table>
-                    <p className="mt-4">
-                      Are you sure you want to finalize this RFQ? This action
-                      cannot be undone. Pressing this button will send an email
-                      with the above allotment to the selected vendors!
-                    </p>
-                    <div className="flex justify-end mt-4">
-                      <button
-                        className="mr-4 bg-gray-300 hover:bg-gray-400 text-black py-2 px-4 rounded"
-                        onClick={() => setIsFinalizeModalOpen(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className={`bg-red-500 hover:bg-red-700 text-white py-2 px-4 rounded-lg ${
-                          isFinalizing ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                        onClick={finalizeRFQ}
-                        disabled={isFinalizing}
-                      >
-                        {isFinalizing ? "Finalizing..." : "Finalize RFQ"}
-                      </button>
+                    </tbody>
+                  </table>
+                  {/* Reason Input if allocations differ */}
+                  {!(
+                    JSON.stringify(
+                      leafAllocation.map((alloc) => ({
+                        vendorName: alloc.vendorName,
+                        trucksAllotted: alloc.trucksAllotted,
+                      }))
+                    ) ===
+                    JSON.stringify(
+                      logisticsAllocation.map((alloc) => ({
+                        vendorName: alloc.vendorName,
+                        trucksAllotted: alloc.trucksAllotted,
+                      }))
+                    )
+                  ) && (
+                    <div className="mt-4">
+                      <label className="font-bold">
+                        Please provide a reason for the difference in allocation:
+                      </label>
+                      <textarea
+                        value={finalizeReason}
+                        onChange={(e) => setFinalizeReason(e.target.value)}
+                        className="w-full p-2 border mt-2"
+                        rows="4"
+                      ></textarea>
                     </div>
+                  )}
+                  <div className="flex justify-end mt-4">
+                    <button
+                      className="mr-4 bg-gray-300 hover:bg-gray-400 text-black py-2 px-4 rounded"
+                      onClick={() => setIsFinalizeModalOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className={`bg-red-500 hover:bg-red-700 text-white py-2 px-4 rounded-lg ${
+                        isFinalizing ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                      onClick={finalizeAllocation}
+                      disabled={isFinalizing}
+                    >
+                      {isFinalizing ? "Finalizing..." : "Finalize Allocation"}
+                    </button>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Status Message */}
           {statusMessage && (
@@ -652,4 +465,3 @@ const EvalRFQs = ({ userRole }) => {
 };
 
 export default EvalRFQs;
-

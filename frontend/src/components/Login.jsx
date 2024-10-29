@@ -5,13 +5,13 @@ import { useNavigate } from "react-router-dom";
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("admin");
   const [email, setEmail] = useState("");
   const [contactNumber, setContactNumber] = useState("");
+  const [role, setRole] = useState("vendor"); // Default to 'vendor' for registration
   const [isRegistering, setIsRegistering] = useState(false);
   const navigate = useNavigate();
 
-  // New state variables for OTP verification
+  // State variables for OTP verification
   const [otpSent, setOtpSent] = useState(false);
   const [userOtp, setUserOtp] = useState("");
   const [otpError, setOtpError] = useState("");
@@ -22,7 +22,7 @@ const Login = ({ onLogin }) => {
       return;
     }
     try {
-      const response = await axios.post("https://petp.onrender.com/api/send-otp", {
+      const response = await axios.post("http://localhost:5000/api/send-otp", {
         email,
       });
       if (response.data.success) {
@@ -40,17 +40,16 @@ const Login = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (role === "admin" && username === "aarnav" && password === "aarnav") {
-      onLogin(role, username);
-    } else if ((role === "vendor" || role === "factory") && !isRegistering) {
+    if (!isRegistering) {
+      // Login process
       try {
-        const response = await axios.post("https://petp.onrender.com/api/login", {
+        const response = await axios.post("http://localhost:5000/api/login", {
           username,
           password,
-          role,
         });
         if (response.data.success) {
-          onLogin(role, response.data.username);
+          const userRole = response.data.role;
+          onLogin(userRole, response.data.username);
         } else {
           alert(response.data.message || "Invalid username or password");
         }
@@ -58,7 +57,8 @@ const Login = ({ onLogin }) => {
         console.error("Login error:", error);
         alert("Invalid username or password");
       }
-    } else if ((role === "vendor" || role === "factory") && isRegistering) {
+    } else {
+      // Registration process
       if (!otpSent) {
         // Validate the form fields before sending OTP
         if (!username || !password || !email || !contactNumber) {
@@ -74,7 +74,7 @@ const Login = ({ onLogin }) => {
         // OTP has been sent, verify OTP
         try {
           const response = await axios.post(
-            "https://petp.onrender.com/api/verify-otp",
+            "http://localhost:5000/api/verify-otp",
             {
               email,
               otp: userOtp,
@@ -84,7 +84,7 @@ const Login = ({ onLogin }) => {
             // OTP verified, proceed to register
             try {
               const registerResponse = await axios.post(
-                "https://petp.onrender.com/api/register",
+                "http://localhost:5000/api/register",
                 {
                   username,
                   password,
@@ -114,8 +114,6 @@ const Login = ({ onLogin }) => {
           alert("An error occurred while verifying OTP. Please try again.");
         }
       }
-    } else {
-      alert("Invalid credentials");
     }
   };
 
@@ -126,41 +124,6 @@ const Login = ({ onLogin }) => {
           <h2 className="mb-8 text-3xl font-bold text-center text-gray-800">
             {isRegistering ? "Create Account" : "Sign In"}
           </h2>
-
-          <div className="flex justify-center mb-8">
-            <button
-              className={`px-5 py-3 mx-2 text-sm font-bold rounded-lg ${
-                role === "admin"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-200 text-gray-800 opacity-80"
-              }`}
-              onClick={() => setRole("admin")}
-            >
-              Admin
-            </button>
-
-            <button
-              className={`px-5 py-3 mx-2 text-sm font-bold rounded-lg ${
-                role === "vendor"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-200 text-gray-800 opacity-80"
-              }`}
-              onClick={() => setRole("vendor")}
-            >
-              Vendor
-            </button>
-
-            <button
-              className={`px-5 py-3 mx-2 text-sm font-bold rounded-lg ${
-                role === "factory"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-200 text-gray-800 opacity-80"
-              }`}
-              onClick={() => setRole("factory")}
-            >
-              Factory
-            </button>
-          </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -193,7 +156,7 @@ const Login = ({ onLogin }) => {
               />
             </div>
 
-            {isRegistering && (role === "vendor" || role === "factory") && (
+            {isRegistering && (
               <>
                 <div>
                   <label className="block mb-2 text-sm font-medium text-black">
@@ -230,6 +193,20 @@ const Login = ({ onLogin }) => {
                       required
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-black">
+                    Role
+                  </label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    className="w-full p-3 border bg-gray-200 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-black"
+                  >
+                    <option value="vendor">Vendor</option>
+                    <option value="factory">Factory User</option>
+                  </select>
                 </div>
 
                 {!otpSent ? (
@@ -303,22 +280,20 @@ const Login = ({ onLogin }) => {
               </button>
             )}
 
-            {(role === "vendor" || role === "factory") && (
-              <button
-                type="button"
-                className="w-full py-2 mt-4 text-indigo-600 hover:underline hover:text-indigo-900 text-center font-medium"
-                onClick={() => {
-                  setIsRegistering(!isRegistering);
-                  setOtpSent(false);
-                  setUserOtp("");
-                  setOtpError("");
-                }}
-              >
-                {isRegistering
-                  ? "Already have an account? Login"
-                  : "Don't have an account? Register"}
-              </button>
-            )}
+            <button
+              type="button"
+              className="w-full py-2 mt-4 text-indigo-600 hover:underline hover:text-indigo-900 text-center font-medium"
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setOtpSent(false);
+                setUserOtp("");
+                setOtpError("");
+              }}
+            >
+              {isRegistering
+                ? "Already have an account? Login"
+                : "Don't have an account? Register"}
+            </button>
           </form>
         </div>
       </div>

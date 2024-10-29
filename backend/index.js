@@ -338,6 +338,7 @@ const rfqSchema = new mongoose.Schema(
     },
     initialQuoteEndTime: { type: Date, required: true },
     evaluationEndTime: { type: Date, required: true },
+    finalizeReason: { type: String },
     l1Price: Number,
     l1VendorId: { type: mongoose.Schema.Types.ObjectId, ref: "Vendor" },
     RFQClosingDate: Date,
@@ -436,29 +437,21 @@ app.post("/api/verify-otp", async (req, res) => {
 
 // endpoint for logging in
 app.post("/api/login", async (req, res) => {
-  const { username, password, role } = req.body;
+  const { username, password } = req.body;
 
-  // check if the role is admin
-  if (role === "admin") {
-    // check if the admin credentials are correct
-    if (username === "admin" && password === "admin") {
-      // return success response
-      return res.status(200).json({ success: true });
-    } else {
-      // return error response
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid username or password" });
-    }
+  // Check if the user is admin
+  if (username === "aarnav" && password === "aarnav") {
+    // Return success response with role 'admin'
+    return res.status(200).json({ success: true, role: 'admin', username: 'aarnav' });
   }
 
-  // check if the role is vendor
   try {
-    const user = await User.findOne({ username, password, role });
+    // Find the user without specifying the role
+    const user = await User.findOne({ username, password });
 
     if (user) {
       if (user.status === "approved") {
-        return res.status(200).json({ success: true, username: user.username });
+        return res.status(200).json({ success: true, role: user.role, username: user.username });
       } else {
         return res
           .status(403)
@@ -1683,80 +1676,203 @@ async function sendInitialPhaseEmails(rfq) {
   }
 }
 
-// endpoint to finalize RFQ
-app.post("/api/rfq/:id/finalize", async (req, res) => {
+// Endpoint to finalize RFQ
+app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
   try {
     const { id } = req.params;
+    const { logisticsAllocation, finalizeReason } = req.body;
 
-    // ensure that the ID is valid for MongoDB ObjectID
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid RFQ ID" });
-    }
-
-    // fetch the RFQ
+    // Fetch the RFQ
     const rfq = await RFQ.findById(id);
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
     }
 
-    // update the RFQ status to 'closed'
-    rfq.status = "closed";
-    await rfq.save();
+    // Check if RFQ is already closed
+    if (rfq.status === 'closed') {
+      return res.status(400).json({ error: 'RFQ has already been finalized.' });
+    }
 
-    // fetch all quotes for this RFQ
+    // Fetch all quotes for this RFQ
     const quotes = await Quote.find({ rfqId: id });
 
-    // get L1 vendor
-    const l1Vendor = await Vendor.findById(rfq.l1VendorId);
+    // Compute LEAF Allocation based on quotes
+    const assignLeafAllocation = (quotes, requiredTrucks) => {
+      if (!requiredTrucks || requiredTrucks <= 0) return [];
 
-    // prepare email details for other vendors
-    const otherVendors = quotes.filter(
-      (q) => q.vendorName !== l1Vendor.vendorName
-    );
+      // Sort quotes by price (ascending)
+      const sortedQuotes = [...quotes].sort((a, b) => a.price - b.price);
+      let totalTrucks = 0;
 
-    // Allocate trucks based on price
-    await allocateTrucksBasedOnPrice(id);
+      return sortedQuotes.map((quote, index) => {
+        if (totalTrucks < requiredTrucks) {
+          const trucksToAllot = Math.min(
+            quote.numberOfTrucks,
+            requiredTrucks - totalTrucks
+          );
+          totalTrucks += trucksToAllot;
+          return {
+            ...quote.toObject(),
+            label: `L${index + 1}`,
+            trucksAllotted: trucksToAllot,
+          };
+        }
+        return { ...quote.toObject(), label: "-", trucksAllotted: 0 };
+      });
+    };
 
-    for (const quote of otherVendors) {
-      const vendor = await Vendor.findOne({ vendorName: quote.vendorName });
-      if (vendor) {
-        const emailContent = {
-          message: {
-            subject: `${rfq.RFQNumber} Finalized`,
-            body: {
-              contentType: "Text",
-              content: `
-                Dear ${vendor.vendorName},
-                The ${rfq.RFQNumber} has been finalized. Your label is ${quote.label} and you have been allotted ${quote.trucksAllotted} trucks.
-                Thank you for your participation.
-                Best regards,
-                Team LEAF.
-              `,
-            },
-            toRecipients: [
-              {
-                emailAddress: {
-                  address: vendor.email,
-                },
-              },
-            ],
-            from: {
+    const leafAllocation = assignLeafAllocation(quotes, rfq.numberOfVehicles);
+
+    // Prepare data for comparison
+    const leafAllocData = leafAllocation.map((alloc) => ({
+      vendorName: alloc.vendorName,
+      trucksAllotted: alloc.trucksAllotted,
+    }));
+    const logisticsAllocData = logisticsAllocation.map((alloc) => ({
+      vendorName: alloc.vendorName,
+      trucksAllotted: alloc.trucksAllotted,
+    }));
+
+    // Check if Logistics Allocation matches LEAF Allocation
+    const isIdentical =
+      JSON.stringify(leafAllocData) === JSON.stringify(logisticsAllocData);
+
+    // If there is a mismatch, send email to specified addresses
+    if (!isIdentical) {
+      // Compute Total LEAF Price and Total Logistics Price
+      const totalLeafPrice = leafAllocation.reduce(
+        (sum, alloc) => sum + alloc.price * alloc.trucksAllotted,
+        0
+      );
+      const totalLogisticsPrice = logisticsAllocation.reduce(
+        (sum, alloc) => sum + alloc.price * alloc.trucksAllotted,
+        0
+      );
+
+      // Prepare tables for email
+      const generateTableHTML = (allocations, title) => {
+        let tableRows = allocations.map((alloc) => `
+          <tr>
+            <td>${alloc.vendorName}</td>
+            <td>${alloc.price}</td>
+            <td>${alloc.trucksAllotted}</td>
+            <td>${alloc.label}</td>
+          </tr>
+        `).join('');
+
+        return `
+          <h3>${title}</h3>
+          <table border="1" cellpadding="5" cellspacing="0">
+            <thead>
+              <tr>
+                <th>Vendor Name</th>
+                <th>Price</th>
+                <th>Trucks Allotted</th>
+                <th>Label</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        `;
+      };
+
+      const leafAllocationTable = generateTableHTML(leafAllocation, 'LEAF Allocation');
+      const logisticsAllocationTable = generateTableHTML(logisticsAllocation, 'Logistics Allocation');
+
+      const emailContent = {
+        message: {
+          subject: 'Mismatch in Allocation',
+          body: {
+            contentType: 'HTML',
+            content: `
+              <p>This is a LEAF auto-alert to notify you of a mismatch between LEAF and Logistics Allocation for <strong>${rfq.RFQNumber}</strong>.</p>
+              ${leafAllocationTable}
+              ${logisticsAllocationTable}
+              <p><strong>Total LEAF Price:</strong> ${totalLeafPrice}</p>
+              <p><strong>Total Logistics Price:</strong> ${totalLogisticsPrice}</p>
+            `,
+          },
+          toRecipients: [
+            {
               emailAddress: {
-                address: SENDER_EMAIL,
+                address: 'aarnav.singh@premierenergies.com',
               },
+            },
+            {
+              emailAddress: {
+                address: 'vishnu.hazari@premierenergies.com',
+              },
+            },
+          ],
+          from: {
+            emailAddress: {
+              address: SENDER_EMAIL,
             },
           },
-        };
-        await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
+        },
+      };
+
+      await client
+        .api(`/users/${SENDER_EMAIL}/sendMail`)
+        .post(emailContent);
+    }
+
+    // Update the RFQ status to 'closed' and save the finalizeReason
+    rfq.status = 'closed';
+    if (finalizeReason) {
+      rfq.finalizeReason = finalizeReason;
+    }
+    await rfq.save();
+
+    // Send emails to vendors with the final allocation
+    for (const alloc of logisticsAllocation) {
+      if (alloc.trucksAllotted > 0) {
+        const vendor = await Vendor.findOne({ vendorName: alloc.vendorName });
+        if (vendor) {
+          const emailContent = {
+            message: {
+              subject: `${rfq.RFQNumber} Finalized Allocation`,
+              body: {
+                contentType: "Text",
+                content: `
+                  Dear ${vendor.vendorName},
+                  The RFQ ${rfq.RFQNumber} has been finalized. Here are your allocation details:
+                  Price: ${alloc.price}
+                  Trucks Allotted: ${alloc.trucksAllotted}
+                  Label: ${alloc.label}
+                  Best regards,
+                  Team LEAF.
+                `,
+              },
+              toRecipients: [
+                {
+                  emailAddress: {
+                    address: vendor.email,
+                  },
+                },
+              ],
+              from: {
+                emailAddress: {
+                  address: SENDER_EMAIL,
+                },
+              },
+            },
+          };
+          await client
+            .api(`/users/${SENDER_EMAIL}/sendMail`)
+            .post(emailContent);
+        }
       }
     }
 
-    res
-      .status(200)
-      .json({ message: "RFQ finalized and emails sent to vendors." });
+    res.status(200).json({
+      message: "Allocation finalized and emails sent to vendors.",
+    });
   } catch (error) {
-    console.error("Error finalizing RFQ:", error);
-    res.status(500).json({ error: "Failed to finalize RFQ." });
+    console.error("Error finalizing allocation:", error);
+    res.status(500).json({ error: "Failed to finalize allocation." });
   }
 });
 
