@@ -1822,6 +1822,11 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
             },
             {
               emailAddress: {
+                address: "saluja@premierenergies.com",
+              },
+            },
+            {
+              emailAddress: {
                 address: "vishnu.hazari@premierenergies.com",
               },
             },
@@ -2310,3 +2315,4 @@ cron.schedule("* * * * *", updateRFQStatuses);
 // start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
