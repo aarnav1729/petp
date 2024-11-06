@@ -1562,7 +1562,7 @@ const NewRFQForm = () => {
                       </div>
                     </th>
                     <th className="px-4 py-2 text-left text-sm font-medium text-white">
-                      Vendor Name
+                      Company Name
                     </th>
                     <th className="px-4 py-2 text-left text-sm font-medium text-white">
                       Email
@@ -1582,7 +1582,7 @@ const NewRFQForm = () => {
                         />
                       </td>
                       <td className="px-4 py-2 text-sm text-black">
-                        {vendor.vendorName}
+                        {vendor.companyName || vendor.vendorName}
                       </td>
                       <td className="px-4 py-2 text-sm text-black">
                         {vendor.email}

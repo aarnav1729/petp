@@ -256,8 +256,8 @@ const vendorSchema = new mongoose.Schema({
   password: String,
   email: { type: String, unique: true, required: true },
   contactNumber: { type: String, unique: true, required: true },
-  //companyName: String,
-  //sapVendorCode: String,
+  companyName: String,
+  sapVendorCode: String,
 });
 
 const Vendor = mongoose.model("Vendor", vendorSchema);
@@ -2315,4 +2315,3 @@ cron.schedule("* * * * *", updateRFQStatuses);
 // start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-

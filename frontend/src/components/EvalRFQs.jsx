@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
+import moment from "moment";
 
 const EvalRFQs = ({ userRole }) => {
   const { rfqId } = useParams();
@@ -17,6 +18,7 @@ const EvalRFQs = ({ userRole }) => {
   const [isFinalizeModalOpen, setIsFinalizeModalOpen] = useState(false);
   const [finalizeReason, setFinalizeReason] = useState("");
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [evaluationPeriodEnded, setEvaluationPeriodEnded] = useState(false);
 
   useEffect(() => {
     fetchRFQDetails();
@@ -25,14 +27,27 @@ const EvalRFQs = ({ userRole }) => {
   }, [rfqId]);
 
   useEffect(() => {
+    if (rfqDetails) {
+      const currentTime = new Date();
+      const evaluationEndTime = new Date(rfqDetails.evaluationEndTime);
+      setEvaluationPeriodEnded(currentTime >= evaluationEndTime);
+    }
+  }, [rfqDetails]);
+
+  useEffect(() => {
     if (rfqDetails && quotes.length > 0) {
-      const leafAlloc = assignLeafAllocation(quotes, rfqDetails.numberOfVehicles);
+      const leafAlloc = assignLeafAllocation(
+        quotes,
+        rfqDetails.numberOfVehicles
+      );
       setLeafAllocation(leafAlloc);
       calculateTotalLeafPrice(leafAlloc);
 
-      // Initialize logistics allocation with vendors who placed bids
-      const logisticsAlloc = assignLogisticsAllocation(leafAlloc);
-      setLogisticsAllocation(logisticsAlloc);
+      // Only initialize logistics allocation if it's empty
+      if (logisticsAllocation.length === 0) {
+        const logisticsAlloc = assignLogisticsAllocation(leafAlloc);
+        setLogisticsAllocation(logisticsAlloc);
+      }
     }
   }, [rfqDetails, quotes]);
 
@@ -70,6 +85,15 @@ const EvalRFQs = ({ userRole }) => {
     } catch (error) {
       console.error("Error fetching vendors:", error);
     }
+  };
+
+  // Always return all allocations
+  const getDisplayedLeafAllocations = () => {
+    return leafAllocation;
+  };
+
+  const getDisplayedLogisticsAllocations = () => {
+    return logisticsAllocation;
   };
 
   // Assign LEAF Allocation
@@ -228,15 +252,28 @@ const EvalRFQs = ({ userRole }) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-black">
-                  {leafAllocation.map((quote) => (
+                  {getDisplayedLeafAllocations().map((quote) => (
                     <tr key={quote._id} className="hover:bg-blue-200">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                      <td
+                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          evaluationPeriodEnded
+                            ? "text-black"
+                            : "filter blur-sm text-gray-500"
+                        }`}
+                      >
                         {quote.vendorName}
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {quote.numberOfTrucks}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                      <td
+                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          evaluationPeriodEnded
+                            ? "text-black"
+                            : "filter blur-sm text-gray-500"
+                        }`}
+                      >
                         {quote.price}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
@@ -283,28 +320,31 @@ const EvalRFQs = ({ userRole }) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-black">
-                  {logisticsAllocation.map((alloc, index) => (
+                  {getDisplayedLogisticsAllocations().map((alloc, index) => (
                     <tr key={index} className="hover:bg-blue-200">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                      <td
+                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          evaluationPeriodEnded
+                            ? "text-black"
+                            : "filter blur-sm text-gray-500"
+                        }`}
+                      >
                         {alloc.vendorName}
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {alloc.trucksOffered}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        <input
-                          type="number"
-                          value={alloc.price}
-                          onChange={(e) =>
-                            handleLogisticsInputChange(
-                              index,
-                              "price",
-                              e.target.value
-                            )
-                          }
-                          className="p-1 border"
-                        />
+                      <td
+                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          evaluationPeriodEnded
+                            ? "text-black"
+                            : "filter blur-sm text-gray-500"
+                        }`}
+                      >
+                        {alloc.price}
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         <input
                           type="number"
@@ -353,7 +393,9 @@ const EvalRFQs = ({ userRole }) => {
             <div className="fixed z-50 inset-0 overflow-y-auto">
               <div className="flex items-center justify-center min-h-screen">
                 <div className="bg-white p-6 rounded-lg shadow-lg w-3/4">
-                  <h2 className="text-xl font-bold mb-4">Finalize Allocation</h2>
+                  <h2 className="text-xl font-bold mb-4">
+                    Finalize Allocation
+                  </h2>
                   {/* Display Logistics Allocation */}
                   <table className="min-w-full divide-y divide-black mt-4">
                     <thead className="bg-gray-200">
@@ -410,7 +452,8 @@ const EvalRFQs = ({ userRole }) => {
                   ) && (
                     <div className="mt-4">
                       <label className="font-bold">
-                        Please provide a reason for the difference in allocation:
+                        Please provide a reason for the difference in
+                        allocation:
                       </label>
                       <textarea
                         value={finalizeReason}
