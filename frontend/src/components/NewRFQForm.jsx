@@ -789,7 +789,7 @@ const NewRFQForm = () => {
     try {
       setIsLoading(true);
       const response = await axios.get(
-        "http://3.108.87.99:5000/api/next-rfq-number"
+        "https://leaf.premierenergiesphotovoltaic.com/api/next-rfq-number"
       );
       setFormData((prevData) => ({
         ...prevData,
@@ -805,8 +805,8 @@ const NewRFQForm = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("http://3.108.87.99:5000/api/vendors");
-      setVendors(response.data); // Set vendor data
+      const response = await axios.get("https://leaf.premierenergiesphotovoltaic.com/api/vendors");
+      setVendors(response.data); // set vendor data
     } catch (error) {
       console.error("Error fetching vendors:", error);
       alert("Failed to fetch vendors.");
@@ -816,9 +816,9 @@ const NewRFQForm = () => {
   const handleVendorSelection = (vendorId) => {
     setSelectedVendors((prevSelected) => {
       if (prevSelected.includes(vendorId)) {
-        return prevSelected.filter((id) => id !== vendorId); // Deselect
+        return prevSelected.filter((id) => id !== vendorId); // deselect
       } else {
-        return [...prevSelected, vendorId]; // Select
+        return [...prevSelected, vendorId]; // select
       }
     });
   };
@@ -826,11 +826,11 @@ const NewRFQForm = () => {
   const handleSelectAllVendors = (e) => {
     const isChecked = e.target.checked;
     if (isChecked) {
-      // Select all vendors
+      // select all vendors
       const allVendorIds = vendors.map((vendor) => vendor._id);
       setSelectedVendors(allVendorIds);
     } else {
-      // Deselect all vendors
+      // deselect all vendors
       setSelectedVendors([]);
     }
   };
@@ -971,7 +971,7 @@ const NewRFQForm = () => {
       delete dataToSend.customVehicleType;
 
       const response = await axios.post(
-        "http://3.108.87.99:5000/api/rfq",
+        "https://leaf.premierenergiesphotovoltaic.com/api/rfq",
         dataToSend
       );
 
@@ -1008,6 +1008,8 @@ const NewRFQForm = () => {
           rfqType: "D2D",
           initialQuoteEndTime: "",
           evaluationEndTime: "",
+          pincode: "",
+          address: "",
         });
         fetchNextRFQNumber();
       } else {
@@ -1471,7 +1473,7 @@ const NewRFQForm = () => {
           </label>
         </div> */}
 
-        {/* Conditionally render eReverseDate and eReverseTime fields */}
+        {/* the below fields of eReverseDate and eReverseTime are conditionally rendered fields based on the toggle state of the eReverse Toggle above */}
         {formData.eReverseToggle && (
           <>
             <div className="mb-4">
@@ -1534,7 +1536,7 @@ const NewRFQForm = () => {
 
         <div className="mb-4 md:col-span-3">
           <label className="text-black mb-2 font-bold items-center text-xl text-center">
-            Which vendors should be notified?
+            Select service providers:
           </label>
           <div className="mt-2 overflow-x-auto">
             {vendors.length > 0 ? (

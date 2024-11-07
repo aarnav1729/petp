@@ -76,7 +76,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `http://3.108.87.99:5000/api/rfq/${rfqId}`
+        `https://leaf.premierenergiesphotovoltaic.com/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
       setRfqStatus(response.data.status);
@@ -88,7 +88,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchQuotes = async () => {
     try {
       const response = await axios.get(
-        `http://3.108.87.99:5000/api/quotes/${rfqId}`
+        `https://leaf.premierenergiesphotovoltaic.com/api/quotes/${rfqId}`
       );
       setQuotes(response.data);
     } catch (error) {
@@ -99,7 +99,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchVendors = async () => {
     try {
       const response = await axios.get(
-        "http://3.108.87.99:5000/api/vendors"
+        "https://leaf.premierenergiesphotovoltaic.com/api/vendors"
       );
       setVendors(response.data);
     } catch (error) {
@@ -207,7 +207,7 @@ const EvalRFQs = ({ userRole }) => {
 
     try {
       const response = await axios.post(
-        `http://3.108.87.99:5000/api/rfq/${rfqId}/finalize-allocation`,
+        `https://leaf.premierenergiesphotovoltaic.com/api/rfq/${rfqId}/finalize-allocation`,
         {
           logisticsAllocation,
           finalizeReason: isIdentical ? "" : finalizeReason,

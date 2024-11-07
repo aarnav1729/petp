@@ -9,6 +9,7 @@ const cron = require("node-cron");
 const moment = require("moment-timezone");
 const http = require("http");
 const { Server } = require("socket.io");
+//const sql = require('mssql');
 
 // outlook emails
 const { Client } = require("@microsoft/microsoft-graph-client");
@@ -56,6 +57,18 @@ const io = new Server(server, {
 // middleware
 app.use(cors({ origin: "*" }));
 app.use(express.json());
+
+//mssql config
+//const config = {
+//  user: 'leaf',
+//  password: 'Leaf@123$',
+//  server: ' ',
+//  port: '',
+//  database: 'LEAF',
+//  options: {
+//    trustServerCertificate: true,
+//  }
+//}
 
 // socket.io configuration
 {

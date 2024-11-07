@@ -8,7 +8,7 @@ const ClosedRFQs = () => {
   useEffect(() => {
     const fetchClosedRFQs = async () => {
       try {
-        const response = await axios.get('http://3.108.87.99:5000/api/closed-rfqs');
+        const response = await axios.get('https://leaf.premierenergiesphotovoltaic.com/api/closed-rfqs');
         setRfqs(response.data);
         setLoading(false);
       } catch (error) {

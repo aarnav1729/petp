@@ -34,7 +34,7 @@ const VendorList = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("http://3.108.87.99:5000/api/vendors");
+      const response = await axios.get("https://leaf.premierenergiesphotovoltaic.com/api/vendors");
       setVendors(response.data);
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -44,7 +44,7 @@ const VendorList = () => {
   const fetchFactoryUsers = async () => {
     try {
       const response = await axios.get(
-        "http://3.108.87.99:5000/api/factory-users"
+        "https://leaf.premierenergiesphotovoltaic.com/api/factory-users"
       );
       setFactoryUsers(response.data);
     } catch (error) {
@@ -56,7 +56,7 @@ const VendorList = () => {
     e.preventDefault();
     try {
       await axios.post(
-        "http://3.108.87.99:5000/api/add-vendor",
+        "https://leaf.premierenergiesphotovoltaic.com/api/add-vendor",
         vendorFormData
       );
       fetchVendors();
@@ -77,7 +77,7 @@ const VendorList = () => {
   const addFactoryUser = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://3.108.87.99:5000/api/add-factory-user", factoryFormData);
+      await axios.post("https://leaf.premierenergiesphotovoltaic.com/api/add-factory-user", factoryFormData);
       fetchFactoryUsers();
       setFactoryFormData({ username: "", password: "", email: "", contactNumber: "" });
       setShowFactoryForm(false);
@@ -90,7 +90,7 @@ const VendorList = () => {
 
   const deleteVendor = async (id) => {
     try {
-      await axios.delete(`http://3.108.87.99:5000/api/vendors/${id}`);
+      await axios.delete(`https://leaf.premierenergiesphotovoltaic.com/api/vendors/${id}`);
       fetchVendors();
     } catch (error) {
       console.error("Error deleting vendor:", error);
@@ -99,7 +99,7 @@ const VendorList = () => {
 
   const deleteFactoryUser = async (id) => {
     try {
-      await axios.delete(`http://3.108.87.99:5000/api/factory-users/${id}`);
+      await axios.delete(`https://leaf.premierenergiesphotovoltaic.com/api/factory-users/${id}`);
       fetchFactoryUsers();
     } catch (error) {
       console.error("Error deleting factory user:", error);

@@ -29,7 +29,7 @@ const VendorQuoteForm = ({ username }) => {
       // fetch rfq details from backend
       try {
         const response = await axios.get(
-          `http://3.108.87.99:5000/api/rfq/${rfqId}`
+          `https://leaf.premierenergiesphotovoltaic.com/api/rfq/${rfqId}`
         );
         setRfqDetails(response.data);
         setRfqStatus(response.data.status);
@@ -41,7 +41,7 @@ const VendorQuoteForm = ({ username }) => {
 
         // fetch quote and number of trucks from backend
         const quoteResponse = await axios.get(
-          `http://3.108.87.99:5000/api/quotes/${rfqId}`
+          `https://leaf.premierenergiesphotovoltaic.com/api/quotes/${rfqId}`
         );
         const existingQuote = quoteResponse.data.find(
           (q) => q.vendorName === username
@@ -118,12 +118,12 @@ const VendorQuoteForm = ({ username }) => {
       // update existing quote or create new quote
       if (vendorQuote) {
         await axios.put(
-          `http://3.108.87.99:5000/api/quote/${vendorQuote._id}`,
+          `https://leaf.premierenergiesphotovoltaic.com/api/quote/${vendorQuote._id}`,
           quoteData
         );
         alert("Quote updated successfully!");
       } else {
-        await axios.post("http://3.108.87.99:5000/api/quote", quoteData);
+        await axios.post("https://leaf.premierenergiesphotovoltaic.com/api/quote", quoteData);
         alert("Quote submitted successfully!");
       }
 

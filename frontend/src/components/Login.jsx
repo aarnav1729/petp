@@ -7,11 +7,11 @@ const Login = ({ onLogin }) => {
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [contactNumber, setContactNumber] = useState("");
-  const [role, setRole] = useState("vendor"); // Default to 'vendor' for registration
+  const [role, setRole] = useState("vendor"); // default to 'vendor' for registration
   const [isRegistering, setIsRegistering] = useState(false);
   const navigate = useNavigate();
 
-  // State variables for OTP verification
+  // state variables for OTP verification
   const [otpSent, setOtpSent] = useState(false);
   const [userOtp, setUserOtp] = useState("");
   const [otpError, setOtpError] = useState("");
@@ -22,7 +22,7 @@ const Login = ({ onLogin }) => {
       return;
     }
     try {
-      const response = await axios.post("http://3.108.87.99:5000/api/send-otp", {
+      const response = await axios.post("https://leaf.premierenergiesphotovoltaic.com/api/send-otp", {
         email,
       });
       if (response.data.success) {
@@ -41,9 +41,9 @@ const Login = ({ onLogin }) => {
     e.preventDefault();
 
     if (!isRegistering) {
-      // Login process
+      // login process
       try {
-        const response = await axios.post("http://3.108.87.99:5000/api/login", {
+        const response = await axios.post("https://leaf.premierenergiesphotovoltaic.com/api/login", {
           username,
           password,
         });
@@ -58,9 +58,9 @@ const Login = ({ onLogin }) => {
         alert("Invalid username or password");
       }
     } else {
-      // Registration process
+      // registration process
       if (!otpSent) {
-        // Validate the form fields before sending OTP
+        // validate the form fields before sending OTP
         if (!username || !password || !email || !contactNumber) {
           alert("Please fill in all the required fields.");
           return;
@@ -74,7 +74,7 @@ const Login = ({ onLogin }) => {
         // OTP has been sent, verify OTP
         try {
           const response = await axios.post(
-            "http://3.108.87.99:5000/api/verify-otp",
+            "https://leaf.premierenergiesphotovoltaic.com/api/verify-otp",
             {
               email,
               otp: userOtp,
@@ -84,7 +84,7 @@ const Login = ({ onLogin }) => {
             // OTP verified, proceed to register
             try {
               const registerResponse = await axios.post(
-                "http://3.108.87.99:5000/api/register",
+                "https://leaf.premierenergiesphotovoltaic.com/api/register",
                 {
                   username,
                   password,
