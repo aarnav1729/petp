@@ -191,7 +191,7 @@ const VendorList = () => {
           <thead className="bg-green-600">
             <tr>
               <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
-                Username
+                Company Name
               </th>
               <th className="px-6 py-3 text-left text-sm text-black font-bold uppercase tracking-wider">
                 Email
@@ -208,7 +208,7 @@ const VendorList = () => {
             {vendors.map((vendor) => (
               <tr key={vendor._id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                  {vendor.username}
+                  {vendor.companyName}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                   {vendor.email}

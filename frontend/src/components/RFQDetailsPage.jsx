@@ -28,7 +28,7 @@ const RFQDetailsPage = ({ userRole }) => {
     const fetchQuotes = async () => {
       try {
         const response = await axios.get(
-          `https://petp.onrender.com/api/quotes/${rfqId}`
+          `http://localhost:5000/api/quotes/${rfqId}`
         );
         setQuotes(response.data);
       } catch (error) {
@@ -38,7 +38,7 @@ const RFQDetailsPage = ({ userRole }) => {
 
     const fetchVendors = async () => {
       try {
-        const response = await axios.get("https://petp.onrender.com/api/vendors");
+        const response = await axios.get("http://localhost:5000/api/vendors");
         setVendors(response.data);
       } catch (error) {
         console.error("Error fetching vendors:", error);
@@ -52,7 +52,7 @@ const RFQDetailsPage = ({ userRole }) => {
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `https://petp.onrender.com/api/rfq/${rfqId}`
+        `http://localhost:5000/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
       setRfqStatus(response.data.status); // Set rfqStatus here
@@ -107,7 +107,7 @@ const RFQDetailsPage = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        "https://petp.onrender.com/api/send-reminder",
+        "http://localhost:5000/api/send-reminder",
         {
           rfqId,
           vendorIds: reminderSelectedVendors,
@@ -128,7 +128,7 @@ const RFQDetailsPage = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        `https://petp.onrender.com/api/rfq/${rfqId}/add-vendors`,
+        `http://localhost:5000/api/rfq/${rfqId}/add-vendors`,
         {
           vendorIds: addVendorsSelectedVendors,
         }
@@ -181,7 +181,7 @@ const RFQDetailsPage = ({ userRole }) => {
   const updateTrucksAllotted = async (quoteId) => {
     try {
       const quoteToUpdate = quotes.find((quote) => quote._id === quoteId);
-      await axios.put(`https://petp.onrender.com/api/quote/${quoteId}`, {
+      await axios.put(`http://localhost:5000/api/quote/${quoteId}`, {
         ...quoteToUpdate,
       });
       alert("Trucks allotted updated successfully.");
@@ -272,7 +272,7 @@ const RFQDetailsPage = ({ userRole }) => {
                       Action
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                      Vendor Name
+                      Company Name
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Timestamp
@@ -286,7 +286,7 @@ const RFQDetailsPage = ({ userRole }) => {
                         {action.action}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        {action.vendorId.vendorName}
+                        {action.vendorId.companyName}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {action.timestamp
@@ -322,7 +322,7 @@ const RFQDetailsPage = ({ userRole }) => {
                 <thead className="bg-green-600 rounded-lg">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                      Vendor Name
+                      Company Name
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Number of Trucks

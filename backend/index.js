@@ -256,8 +256,6 @@ const vendorSchema = new mongoose.Schema({
   password: String,
   email: { type: String, unique: true, required: true },
   contactNumber: { type: String, unique: true, required: true },
-  companyName: String,
-  sapVendorCode: String,
 });
 
 const Vendor = mongoose.model("Vendor", vendorSchema);
@@ -267,6 +265,7 @@ const quoteSchema = new mongoose.Schema(
   {
     rfqId: { type: mongoose.Schema.Types.ObjectId, ref: "RFQ" },
     vendorName: String,
+    companyName: String,
     price: Number,
     message: String,
     numberOfTrucks: Number,
@@ -1139,7 +1138,6 @@ app.get("/api/rfq/:id", async (req, res) => {
       .populate("selectedVendors")
       .populate("vendorActions.vendorId")
       .lean(); // using .lean() to get a plain js object
-
     if (!rfq) {
       return res.status(404).json({ error: "RFQ not found" });
     }

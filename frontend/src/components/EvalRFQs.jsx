@@ -19,6 +19,8 @@ const EvalRFQs = ({ userRole }) => {
   const [finalizeReason, setFinalizeReason] = useState("");
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [evaluationPeriodEnded, setEvaluationPeriodEnded] = useState(false);
+  const [enrichedQuotes, setEnrichedQuotes] = useState([]);
+
 
   useEffect(() => {
     fetchRFQDetails();
@@ -35,9 +37,9 @@ const EvalRFQs = ({ userRole }) => {
   }, [rfqDetails]);
 
   useEffect(() => {
-    if (rfqDetails && quotes.length > 0) {
+    if (rfqDetails && enrichedQuotes.length > 0) {
       const leafAlloc = assignLeafAllocation(
-        quotes,
+        enrichedQuotes,
         rfqDetails.numberOfVehicles
       );
       setLeafAllocation(leafAlloc);
@@ -49,7 +51,24 @@ const EvalRFQs = ({ userRole }) => {
         setLogisticsAllocation(logisticsAlloc);
       }
     }
-  }, [rfqDetails, quotes]);
+  }, [rfqDetails, enrichedQuotes]);
+
+  useEffect(() => {
+    if (quotes.length > 0 && vendors.length > 0) {
+      const enriched = quotes.map((quote) => {
+        const matchingVendor = vendors.find(
+          (vendor) => vendor.vendorName === quote.vendorName
+        );
+        return {
+          ...quote,
+          companyName: matchingVendor
+            ? matchingVendor.companyName || quote.vendorName
+            : quote.vendorName,
+        };
+      });
+      setEnrichedQuotes(enriched);
+    }
+  }, [quotes, vendors]);
 
   useEffect(() => {
     calculateTotalLogisticsPrice(logisticsAllocation);
@@ -87,7 +106,6 @@ const EvalRFQs = ({ userRole }) => {
     }
   };
 
-  // Always return all allocations
   const getDisplayedLeafAllocations = () => {
     return leafAllocation;
   };
@@ -127,6 +145,7 @@ const EvalRFQs = ({ userRole }) => {
     const sortedAllocations = [...leafAlloc].sort((a, b) => a.price - b.price);
     return sortedAllocations.map((alloc, index) => ({
       vendorName: alloc.vendorName,
+      companyName: alloc.companyName,
       trucksOffered: alloc.numberOfTrucks,
       price: alloc.price,
       trucksAllotted: alloc.trucksAllotted,
@@ -261,7 +280,7 @@ const EvalRFQs = ({ userRole }) => {
                             : "filter blur-sm text-gray-500"
                         }`}
                       >
-                        {quote.vendorName}
+                        {quote.companyName || quote.vendorName}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
@@ -303,7 +322,7 @@ const EvalRFQs = ({ userRole }) => {
                 <thead className="bg-blue-600 rounded-lg">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                      Vendor Name
+                      Company Name
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Trucks Offered
