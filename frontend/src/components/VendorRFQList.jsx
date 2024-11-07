@@ -13,7 +13,7 @@ const VendorRFQList = ({ username }) => {
   const fetchVendorQuotes = async () => {
     
     try {
-      const response = await axios.get("https://leaf-tn20.onrender.com/api/quotes");
+      const response = await axios.get("http://3.108.87.99:5000/api/quotes");
       // filter quotes by vendor name
       const quotesByVendor = response.data.reduce((acc, quote) => {
         // set vendor quotes
@@ -32,7 +32,7 @@ const VendorRFQList = ({ username }) => {
   const fetchRFQs = async () => {
     try {
       const response = await axios.get(
-        `https://leaf-tn20.onrender.com/api/rfqs/vendor/${username}`
+        `http://3.108.87.99:5000/api/rfqs/vendor/${username}`
       );
       setRfqs(response.data);
     } catch (error) {

@@ -76,7 +76,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}`
+        `http://3.108.87.99:5000/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
       setRfqStatus(response.data.status);
@@ -88,7 +88,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchQuotes = async () => {
     try {
       const response = await axios.get(
-        `https://leaf-tn20.onrender.com/api/quotes/${rfqId}`
+        `http://3.108.87.99:5000/api/quotes/${rfqId}`
       );
       setQuotes(response.data);
     } catch (error) {
@@ -99,7 +99,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchVendors = async () => {
     try {
       const response = await axios.get(
-        "https://leaf-tn20.onrender.com/api/vendors"
+        "http://3.108.87.99:5000/api/vendors"
       );
       setVendors(response.data);
     } catch (error) {
@@ -207,7 +207,7 @@ const EvalRFQs = ({ userRole }) => {
 
     try {
       const response = await axios.post(
-        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}/finalize-allocation`,
+        `http://3.108.87.99:5000/api/rfq/${rfqId}/finalize-allocation`,
         {
           logisticsAllocation,
           finalizeReason: isIdentical ? "" : finalizeReason,
@@ -331,7 +331,6 @@ const EvalRFQs = ({ userRole }) => {
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Price
                     </th>
-
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Trucks Allotted
                     </th>

@@ -8,7 +8,7 @@ const ActiveAuctions = () => {
   useEffect(() => {
     const fetchActiveAuctions = async () => {
       try {
-        const response = await axios.get('https://petp.onrender.com/api/active-auctions');
+        const response = await axios.get('http://3.108.87.99:5000/api/active-auctions');
         setAuctions(response.data);
       } catch (error) {
         console.error('Error fetching active auctions:', error);

@@ -789,7 +789,7 @@ const NewRFQForm = () => {
     try {
       setIsLoading(true);
       const response = await axios.get(
-        "https://leaf-tn20.onrender.com/api/next-rfq-number"
+        "http://3.108.87.99:5000/api/next-rfq-number"
       );
       setFormData((prevData) => ({
         ...prevData,
@@ -805,7 +805,7 @@ const NewRFQForm = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("https://leaf-tn20.onrender.com/api/vendors");
+      const response = await axios.get("http://3.108.87.99:5000/api/vendors");
       setVendors(response.data); // Set vendor data
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -971,7 +971,7 @@ const NewRFQForm = () => {
       delete dataToSend.customVehicleType;
 
       const response = await axios.post(
-        "https://leaf-tn20.onrender.com/api/rfq",
+        "http://3.108.87.99:5000/api/rfq",
         dataToSend
       );
 

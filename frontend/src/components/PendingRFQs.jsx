@@ -9,9 +9,8 @@ const PendingRFQs = ({ username }) => {
   useEffect(() => {
     const fetchPendingRFQs = async () => {
       try {
-        const response = await axios.get(
-          
-          `https://leaf-tn20.onrender.com/api/vendor-pending-rfqs/${username}`
+        const response = await axios.get(          
+          `http://3.108.87.99:5000/api/vendor-pending-rfqs/${username}`
         );
         setPendingRFQs(response.data);
         setLoading(false);
