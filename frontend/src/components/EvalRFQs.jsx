@@ -21,7 +21,6 @@ const EvalRFQs = ({ userRole }) => {
   const [evaluationPeriodEnded, setEvaluationPeriodEnded] = useState(false);
   const [enrichedQuotes, setEnrichedQuotes] = useState([]);
 
-
   useEffect(() => {
     fetchRFQDetails();
     fetchQuotes();
@@ -99,7 +98,9 @@ const EvalRFQs = ({ userRole }) => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("https://leaf-tn20.onrender.com/api/vendors");
+      const response = await axios.get(
+        "https://leaf-tn20.onrender.com/api/vendors"
+      );
       setVendors(response.data);
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -330,6 +331,7 @@ const EvalRFQs = ({ userRole }) => {
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Price
                     </th>
+
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Trucks Allotted
                     </th>
@@ -361,7 +363,18 @@ const EvalRFQs = ({ userRole }) => {
                             : "filter blur-sm text-gray-500"
                         }`}
                       >
-                        {alloc.price}
+                        <input
+                          type="number"
+                          value={alloc.price}
+                          onChange={(e) =>
+                            handleLogisticsInputChange(
+                              index,
+                              "price",
+                              e.target.value
+                            )
+                          }
+                          className="p-1 border"
+                        />
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
@@ -438,12 +451,25 @@ const EvalRFQs = ({ userRole }) => {
                         .filter((alloc) => alloc.trucksAllotted > 0)
                         .map((alloc, index) => (
                           <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                            <td
+                              className={`px-6 py-4 whitespace-nowrap text-sm ${
+                                evaluationPeriodEnded
+                                  ? "text-black"
+                                  : "filter blur-sm text-gray-500"
+                              }`}
+                            >
                               {alloc.vendorName}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                            <td
+                              className={`px-6 py-4 whitespace-nowrap text-sm ${
+                                evaluationPeriodEnded
+                                  ? "text-black"
+                                  : "filter blur-sm text-gray-500"
+                              }`}
+                            >
                               {alloc.price}
                             </td>
+
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                               {alloc.trucksAllotted}
                             </td>

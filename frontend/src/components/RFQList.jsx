@@ -8,7 +8,6 @@ const RFQList = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const navigate = useNavigate();
 
-
   useEffect(() => {
     fetchRFQs(); // Initial fetch
 

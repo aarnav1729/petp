@@ -1851,6 +1851,20 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
     }
     await rfq.save();
 
+    for (const alloc of logisticsAllocation) {
+      // Find the quote
+      const quote = await Quote.findOne({
+        rfqId: id,
+        vendorName: alloc.vendorName,
+      });
+      if (quote) {
+        quote.price = alloc.price;
+        quote.trucksAllotted = alloc.trucksAllotted;
+        quote.label = alloc.label;
+        await quote.save();
+      }
+    }
+
     // Send emails to vendors with the final allocation
     for (const alloc of logisticsAllocation) {
       if (alloc.trucksAllotted > 0) {
