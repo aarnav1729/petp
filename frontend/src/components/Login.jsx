@@ -22,7 +22,7 @@ const Login = ({ onLogin }) => {
       return;
     }
     try {
-      const response = await axios.post("https://petp.onrender.com/api/send-otp", {
+      const response = await axios.post("https://leaf-tn20.onrender.com/api/send-otp", {
         email,
       });
       if (response.data.success) {
@@ -43,7 +43,7 @@ const Login = ({ onLogin }) => {
     if (!isRegistering) {
       // Login process
       try {
-        const response = await axios.post("https://petp.onrender.com/api/login", {
+        const response = await axios.post("https://leaf-tn20.onrender.com/api/login", {
           username,
           password,
         });
@@ -74,7 +74,7 @@ const Login = ({ onLogin }) => {
         // OTP has been sent, verify OTP
         try {
           const response = await axios.post(
-            "https://petp.onrender.com/api/verify-otp",
+            "https://leaf-tn20.onrender.com/api/verify-otp",
             {
               email,
               otp: userOtp,
@@ -84,7 +84,7 @@ const Login = ({ onLogin }) => {
             // OTP verified, proceed to register
             try {
               const registerResponse = await axios.post(
-                "https://petp.onrender.com/api/register",
+                "https://leaf-tn20.onrender.com/api/register",
                 {
                   username,
                   password,

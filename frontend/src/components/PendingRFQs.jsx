@@ -10,7 +10,8 @@ const PendingRFQs = ({ username }) => {
     const fetchPendingRFQs = async () => {
       try {
         const response = await axios.get(
-          `https://petp.onrender.com/api/vendor-pending-rfqs/${username}`
+          
+          `https://leaf-tn20.onrender.com/api/vendor-pending-rfqs/${username}`
         );
         setPendingRFQs(response.data);
         setLoading(false);

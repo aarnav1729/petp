@@ -77,7 +77,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `https://petp.onrender.com/api/rfq/${rfqId}`
+        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
       setRfqStatus(response.data.status);
@@ -89,7 +89,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchQuotes = async () => {
     try {
       const response = await axios.get(
-        `https://petp.onrender.com/api/quotes/${rfqId}`
+        `https://leaf-tn20.onrender.com/api/quotes/${rfqId}`
       );
       setQuotes(response.data);
     } catch (error) {
@@ -99,7 +99,7 @@ const EvalRFQs = ({ userRole }) => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("https://petp.onrender.com/api/vendors");
+      const response = await axios.get("https://leaf-tn20.onrender.com/api/vendors");
       setVendors(response.data);
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -206,7 +206,7 @@ const EvalRFQs = ({ userRole }) => {
 
     try {
       const response = await axios.post(
-        `https://petp.onrender.com/api/rfq/${rfqId}/finalize-allocation`,
+        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}/finalize-allocation`,
         {
           logisticsAllocation,
           finalizeReason: isIdentical ? "" : finalizeReason,
