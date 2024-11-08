@@ -10,7 +10,7 @@ const Accounts = () => {
 
   const fetchPendingAccounts = async () => {
     try {
-      const response = await axios.get("https://leaf.premierenergiesphotovoltaic.com/api/pending-accounts");
+      const response = await axios.get("http://127.0.0.1:5000/api/pending-accounts");
       setPendingAccounts(response.data);
     } catch (error) {
       console.error("Error fetching pending accounts:", error);
@@ -19,7 +19,7 @@ const Accounts = () => {
 
   const approveAccount = async (id) => {
     try {
-      await axios.post(`https://leaf.premierenergiesphotovoltaic.com/api/approve-account/${id}`);
+      await axios.post(`http://127.0.0.1:5000/api/approve-account/${id}`);
       // remove the approved account from the list
       setPendingAccounts(pendingAccounts.filter((account) => account._id !== id));
     } catch (error) {
@@ -29,7 +29,7 @@ const Accounts = () => {
 
   const declineAccount = async (id) => {
     try {
-      await axios.post(`https://leaf.premierenergiesphotovoltaic.com/api/decline-account/${id}`);
+      await axios.post(`http://127.0.0.1:5000/api/decline-account/${id}`);
       // remove the declined account from the list
       setPendingAccounts(pendingAccounts.filter((account) => account._id !== id));
     } catch (error) {

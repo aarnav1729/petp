@@ -789,7 +789,7 @@ const NewRFQForm = () => {
     try {
       setIsLoading(true);
       const response = await axios.get(
-        "https://leaf.premierenergiesphotovoltaic.com/api/next-rfq-number"
+        "http://127.0.0.1:5000/api/next-rfq-number"
       );
       setFormData((prevData) => ({
         ...prevData,
@@ -805,7 +805,7 @@ const NewRFQForm = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("https://leaf.premierenergiesphotovoltaic.com/api/vendors");
+      const response = await axios.get("http://127.0.0.1:5000/api/vendors");
       setVendors(response.data); // set vendor data
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -971,7 +971,7 @@ const NewRFQForm = () => {
       delete dataToSend.customVehicleType;
 
       const response = await axios.post(
-        "https://leaf.premierenergiesphotovoltaic.com/api/rfq",
+        "http://127.0.0.1:5000/api/rfq",
         dataToSend
       );
 

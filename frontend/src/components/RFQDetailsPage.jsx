@@ -28,7 +28,7 @@ const RFQDetailsPage = ({ userRole }) => {
     const fetchQuotes = async () => {
       try {
         const response = await axios.get(
-          `https://leaf.premierenergiesphotovoltaic.com/api/quotes/${rfqId}`
+          `http://127.0.0.1:5000/api/quotes/${rfqId}`
         );
         setQuotes(response.data);
       } catch (error) {
@@ -38,7 +38,7 @@ const RFQDetailsPage = ({ userRole }) => {
 
     const fetchVendors = async () => {
       try {
-        const response = await axios.get("https://leaf.premierenergiesphotovoltaic.com/api/vendors");
+        const response = await axios.get("http://127.0.0.1:5000/api/vendors");
         setVendors(response.data);
       } catch (error) {
         console.error("Error fetching vendors:", error);
@@ -52,7 +52,7 @@ const RFQDetailsPage = ({ userRole }) => {
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `https://leaf.premierenergiesphotovoltaic.com/api/rfq/${rfqId}`
+        `http://127.0.0.1:5000/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
       setRfqStatus(response.data.status); // Set rfqStatus here
@@ -107,7 +107,7 @@ const RFQDetailsPage = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        "https://leaf.premierenergiesphotovoltaic.com/api/send-reminder",
+        "http://127.0.0.1:5000/api/send-reminder",
         {
           rfqId,
           vendorIds: reminderSelectedVendors,
@@ -128,7 +128,7 @@ const RFQDetailsPage = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        `https://leaf.premierenergiesphotovoltaic.com/api/rfq/${rfqId}/add-vendors`,
+        `http://127.0.0.1:5000/api/rfq/${rfqId}/add-vendors`,
         {
           vendorIds: addVendorsSelectedVendors,
         }
@@ -181,7 +181,7 @@ const RFQDetailsPage = ({ userRole }) => {
   const updateTrucksAllotted = async (quoteId) => {
     try {
       const quoteToUpdate = quotes.find((quote) => quote._id === quoteId);
-      await axios.put(`https://leaf.premierenergiesphotovoltaic.com/api/quote/${quoteId}`, {
+      await axios.put(`http://127.0.0.1:5000/api/quote/${quoteId}`, {
         ...quoteToUpdate,
       });
       alert("Trucks allotted updated successfully.");
