@@ -2350,5 +2350,3 @@ app.get('*', (req, res) => {
 
 // start server
 const PORT = process.env.PORT || 5000;
-const HOST = '10.0.50.31'; // Use '0.0.0.0' to accept connections from any IP
-app.listen(PORT, HOST, () => console.log(`Server running on ${HOST}:${PORT}`));
