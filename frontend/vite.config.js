@@ -7,9 +7,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://leaf.premierenergiesphotovoltaic.com',
+        target: 'http://127.0.0.1:7000',
         changeOrigin: true,
-        secure: false, // Set to true if your backend has a valid SSL certificate
+        secure: false, // set to true if your backend has a valid SSL certificate
       },
     },
   },

@@ -21,8 +21,8 @@ const Login = ({ onLogin }) => {
       alert("Please enter your email.");
       return;
     }
-    try {
-      const response = await axios.post("http://127.0.0.1:5000/api/send-otp", {
+    try { 
+      const response = await axios.post("http://127.0.0.1:7000/api/send-otp", {
         email,
       });
       if (response.data.success) {
@@ -43,7 +43,7 @@ const Login = ({ onLogin }) => {
     if (!isRegistering) {
       // login process
       try {
-        const response = await axios.post("http://127.0.0.1:5000/api/login", {
+        const response = await axios.post("http://0.0.0.0:7000/api/login", {
           username,
           password,
         });
@@ -74,7 +74,7 @@ const Login = ({ onLogin }) => {
         // OTP has been sent, verify OTP
         try {
           const response = await axios.post(
-            "http://127.0.0.1:5000/api/verify-otp",
+            "http://0.0.0.0:7000/api/verify-otp",
             {
               email,
               otp: userOtp,
@@ -84,7 +84,7 @@ const Login = ({ onLogin }) => {
             // OTP verified, proceed to register
             try {
               const registerResponse = await axios.post(
-                "http://127.0.0.1:5000/api/register",
+                "http://0.0.0.0:7000/api/register",
                 {
                   username,
                   password,

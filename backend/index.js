@@ -10,6 +10,7 @@ const moment = require("moment-timezone");
 const http = require("http");
 const { Server } = require("socket.io");
 //const sql = require('mssql');
+const path = require('path');
 
 // outlook emails
 const { Client } = require("@microsoft/microsoft-graph-client");
@@ -2337,7 +2338,17 @@ cron.schedule("* * * * *", updateRFQStatuses);
 
 // console.log("Cron job scheduled to run every minute
 
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+
 // start server
-const PORT = process.env.PORT || 5000;
-const HOST = '127.0.0.1';
+const PORT = process.env.PORT || 7000;
+const HOST = '127.0.0.1'; // Use '0.0.0.0' to accept connections from any IP
 app.listen(PORT, HOST, () => console.log(`Server running on ${HOST}:${PORT}`));
