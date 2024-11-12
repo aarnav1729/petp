@@ -261,7 +261,7 @@ const VendorQuoteForm = ({ username }) => {
       content: [
         "PREMIER ENERGIES will issue daily inquiries for trucks through our LEAF application. These inquiries will be sent to approved transporters for their responses.",
         "The transporter must respond before the end of the time slot designated for submitting quotes. Upon submission, the application will display the transporter's relative competitive position (L1, L2, etc.). The transporter may submit a revised quote within the specified time slot. PREMIER ENERGIES reserves the right to cancel the inquiry and reissue it later or at a different time as necessary. Additionally, PREMIER ENERGIES may extend or modify the time period at its sole discretion for submitting quotes as needed.",
-        "If a quote was submitted in error, the transporter may approach PREMIER ENERGIES's Head of Logistics immediately. The logistics manager will cancel the quote based on the transporter's written request via email. However, frequent requests of this nature are not encouraged.",
+        "If a quote was submitted in error, the transporter may approach PREMIER ENERGIES' Head of Logistics immediately. The logistics manager will cancel the quote based on the transporter's written request via email. However, frequent requests of this nature are not encouraged.",
         "PREMIER ENERGIES will generally award the contract to the lowest bidder; however, it reserves the right to award the contract to bidders who quoted higher based on other critical business criteria. The decision of PREMIER ENERGIES in this regard is final and binding on all the bidders. No disputes in this regard shall be entertained. Additionally, PREMIER ENERGIES reserves the right to reassess the L1 bidder based on vendor performance as outlined in Clause 18.",
         "The transporter is required to arrange the truck within the specified time frame communicated by PREMIER ENERGIES. In case the transporter fails to do so, PREMIER ENERGIES shall have the right to impose a penalty. Additionally, PREMIER ENERGIES reserves the right to engage an alternative transporter under the risk purchase clause. Any difference in freight costs incurred by PREMIER ENERGIES will be charged to the transporter who failed to provide the truck on time, in accordance with the agreed terms.",
         "The Service Purchase Order will be issued by the PREMIER ENERGIES Logistics team following vehicle mobilization. The transporter must obtain prior email confirmation from the PREMIER ENERGIES Logistics team for any associated costs, including detention or unloading charges, before incurring these expenses.",
@@ -378,7 +378,7 @@ const VendorQuoteForm = ({ username }) => {
     {
       header: "19. Force Majeure Clause",
       content: [
-        "PREMIER ENERGIES shall not be liable to pay detention charges, loading and unloading charges, or any other costs that have not been previously agreed upon, in the event of unforeseen circumstances such as lockdowns, roadblocks, cyclones, floods, or other delays beyond PREMIER ENERGIES's control.",
+        "PREMIER ENERGIES shall not be liable to pay detention charges, loading and unloading charges, or any other costs that have not been previously agreed upon, in the event of unforeseen circumstances such as lockdowns, roadblocks, cyclones, floods, or other delays beyond PREMIER ENERGIES' control.",
       ],
     },
     {
@@ -413,8 +413,8 @@ const VendorQuoteForm = ({ username }) => {
               TERMS AND CONDITIONS FOR DOMESTIC TRANSPORTATION SERVICES
             </h1>
             <div
-              className="terms-content mb-4 p-4 border overflow-y-auto"
-              style={{ height: "50vh" }}
+              className="terms-content mb-4 p-4 border overflow-y-auto font-chakra"
+              style={{ height: "50vh", fontFamily:'Chakra Petch' }}
               onScroll={(e) => {
                 const { scrollTop, scrollHeight, clientHeight } = e.target;
                 if (scrollTop + clientHeight >= scrollHeight - 10) {

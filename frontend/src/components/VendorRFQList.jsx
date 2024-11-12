@@ -56,7 +56,7 @@ const VendorRFQList = ({ username }) => {
   return (
     <div className="container mx-auto mt-8 px-4 py-6 bg-white rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold text-center mb-6">
-        RFQ List for Vendors
+        RFQ List
       </h2>
 
       {rfqs.length === 0 ? (

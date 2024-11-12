@@ -1,5 +1,18 @@
-.blurred {
-    color: transparent;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-  }
+@import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&display=swap");
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.blurred {
+  color: transparent;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.font-chakra {
+  font-family: 'Chakra Petch';
+}
+
+body {
+  font-family: 'Chakra Petch' !important;
+}
