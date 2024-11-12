@@ -2164,6 +2164,68 @@ async function sendParticipationReminderEmail(rfqId, selectedVendorIds) {
   }
 }
 
+// Fetch vendor details by username
+app.get('/api/vendors/username/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const vendor = await Vendor.findOne({ username });
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+    res.status(200).json(vendor);
+  } catch (error) {
+    console.error('Error fetching vendor details:', error);
+    res.status(500).json({ error: 'Failed to fetch vendor details' });
+  }
+});
+
+app.post('/api/send-terms-agreement-email', async (req, res) => {
+  try {
+    const {
+      rfqId,
+      vendorName,
+      vendorEmail,
+      rfqNumber,
+      termsAndConditions,
+    } = req.body;
+
+    const emailContent = {
+      message: {
+        subject: `Agreement to Terms and Conditions for ${rfqNumber}`,
+        body: {
+          contentType: 'HTML',
+          content: `
+            <p>Dear ${vendorName},</p>
+            <p>You have agreed to the following terms and conditions for RFQ Number: <strong>${rfqNumber}</strong>:</p>
+            <pre>${termsAndConditions}</pre>
+            <p>Best regards,<br/>Team LEAF.</p>
+          `,
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: vendorEmail,
+            },
+          },
+        ],
+        from: {
+          emailAddress: {
+            address: SENDER_EMAIL,
+          },
+        },
+      },
+    };
+
+    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
+
+    res.status(200).json({ message: 'Agreement email sent successfully.' });
+  } catch (error) {
+    console.error('Error sending agreement email:', error);
+    res.status(500).json({ error: 'Failed to send agreement email.' });
+  }
+});
+
+
 // endpoint for sending participation reminder emails
 app.post("/api/send-reminder", async (req, res) => {
   const { rfqId, vendorIds } = req.body;
@@ -2339,13 +2401,13 @@ cron.schedule("* * * * *", updateRFQStatuses);
 // console.log("Cron job scheduled to run every minute
 
 // Serve static files from the React app
-app.use(express.static(path.join(__dirname, 'dist')));
+//app.use(express.static(path.join(__dirname, 'dist')));
 
 // The "catchall" handler: for any request that doesn't
 // match one above, send back React's index.html file.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+//app.get('*', (req, res) => {
+//  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+//});
 
 // start server
 const PORT = process.env.PORT || 5000;

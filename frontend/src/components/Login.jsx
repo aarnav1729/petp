@@ -22,7 +22,7 @@ const Login = ({ onLogin }) => {
       return;
     }
     try { 
-      const response = await axios.post("http://localhost:5000/api/send-otp", {
+      const response = await axios.post("https://leaf-tn20.onrender.com/api/send-otp", {
         email,
       });
       if (response.data.success) {
@@ -43,7 +43,7 @@ const Login = ({ onLogin }) => {
     if (!isRegistering) {
       // login process
       try {
-        const response = await axios.post("http://localhost:5000/api/login", {
+        const response = await axios.post("https://leaf-tn20.onrender.com/api/login", {
           username,
           password,
         });
@@ -74,7 +74,7 @@ const Login = ({ onLogin }) => {
         // OTP has been sent, verify OTP
         try {
           const response = await axios.post(
-            "http://localhost:5000/api/verify-otp",
+            "https://leaf-tn20.onrender.com/api/verify-otp",
             {
               email,
               otp: userOtp,
@@ -84,7 +84,7 @@ const Login = ({ onLogin }) => {
             // OTP verified, proceed to register
             try {
               const registerResponse = await axios.post(
-                "http://localhost:5000/api/register",
+                "https://leaf-tn20.onrender.com/api/register",
                 {
                   username,
                   password,
