@@ -436,8 +436,7 @@ const VendorQuoteForm = ({ username }) => {
               ))}
             </div>
             <p className="text-center mb-4">
-              You can only make a quotation if you agree with our terms and
-              conditions.
+            To proceed further kindly accept our terms and conditions.
             </p>
             <div className="flex justify-center">
               <button
