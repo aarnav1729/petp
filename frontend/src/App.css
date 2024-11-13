@@ -10,7 +10,7 @@
 }
 
 .font-chakra {
-  font-family: 'Chakra Petch';
+  font-family: 'Chakra Petch' !important;
 }
 
 body {

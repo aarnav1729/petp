@@ -10,7 +10,7 @@ const moment = require("moment-timezone");
 const http = require("http");
 const { Server } = require("socket.io");
 //const sql = require('mssql');
-const path = require('path');
+const path = require("path");
 
 // outlook emails
 const { Client } = require("@microsoft/microsoft-graph-client");
@@ -2165,35 +2165,30 @@ async function sendParticipationReminderEmail(rfqId, selectedVendorIds) {
 }
 
 // Fetch vendor details by username
-app.get('/api/vendors/username/:username', async (req, res) => {
+app.get("/api/vendors/username/:username", async (req, res) => {
   try {
     const { username } = req.params;
     const vendor = await Vendor.findOne({ username });
     if (!vendor) {
-      return res.status(404).json({ error: 'Vendor not found' });
+      return res.status(404).json({ error: "Vendor not found" });
     }
     res.status(200).json(vendor);
   } catch (error) {
-    console.error('Error fetching vendor details:', error);
-    res.status(500).json({ error: 'Failed to fetch vendor details' });
+    console.error("Error fetching vendor details:", error);
+    res.status(500).json({ error: "Failed to fetch vendor details" });
   }
 });
 
-app.post('/api/send-terms-agreement-email', async (req, res) => {
+app.post("/api/send-terms-agreement-email", async (req, res) => {
   try {
-    const {
-      rfqId,
-      vendorName,
-      vendorEmail,
-      rfqNumber,
-      termsAndConditions,
-    } = req.body;
+    const { rfqId, vendorName, vendorEmail, rfqNumber, termsAndConditions } =
+      req.body;
 
     const emailContent = {
       message: {
         subject: `Agreement to Terms and Conditions for ${rfqNumber}`,
         body: {
-          contentType: 'HTML',
+          contentType: "HTML",
           content: `
             <p>Dear ${vendorName},</p>
             <p>You have agreed to the following terms and conditions for RFQ Number: <strong>${rfqNumber}</strong>:</p>
@@ -2218,13 +2213,70 @@ app.post('/api/send-terms-agreement-email', async (req, res) => {
 
     await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
 
-    res.status(200).json({ message: 'Agreement email sent successfully.' });
+    res.status(200).json({ message: "Agreement email sent successfully." });
   } catch (error) {
-    console.error('Error sending agreement email:', error);
-    res.status(500).json({ error: 'Failed to send agreement email.' });
+    console.error("Error sending agreement email:", error);
+    res.status(500).json({ error: "Failed to send agreement email." });
   }
 });
 
+// Endpoint to handle contact form submissions
+app.post("/api/contact", async (req, res) => {
+  const { name, contactNumber, companyName, message } = req.body;
+
+  // Basic validation
+  if (!name || !contactNumber || !companyName || !message) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
+  try {
+    // Email content
+    const emailContent = {
+      message: {
+        subject: "New Contact Form Submission",
+        body: {
+          contentType: "HTML",
+          content: `
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Contact Number:</strong> ${contactNumber}</p>
+            <p><strong>Company Name:</strong> ${companyName}</p>
+            <p><strong>Message:</strong></p>
+            <p>${message}</p>
+          `,
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: "leaf@premierenergies.com",
+            },
+          },
+          {
+            emailAddress: {
+              address: "aarnav.singh@premierenergies.com",
+            },
+          },
+        ],
+        from: {
+          emailAddress: {
+            address: SENDER_EMAIL,
+          },
+        },
+      },
+    };
+
+    // Send the email using Microsoft Graph API
+    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
+
+    res
+      .status(200)
+      .json({ success: true, message: "Email sent successfully." });
+  } catch (error) {
+    console.error("Error sending email:", error);
+    res
+      .status(500)
+      .json({ error: "An error occurred while sending the email." });
+  }
+});
 
 // endpoint for sending participation reminder emails
 app.post("/api/send-reminder", async (req, res) => {

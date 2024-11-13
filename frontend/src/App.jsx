@@ -21,6 +21,8 @@ import Registering from "./components/Registering";
 import Accounts from "./components/Accounts";
 import FactoryRFQList from "./components/FactoryRFQList";
 import EvalRFQs from "./components/EvalRFQs";
+import TC from "./components/TC"; 
+import Contact from "./components/Contact";
 
 const App = () => {
   const [role, setRole] = useState(null);
@@ -45,6 +47,8 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Login onLogin={handleLogin} />} />
               <Route path="/registering" element={<Registering />} />
+              <Route path="/terms" element={<TC />} />
+              <Route path="/contact" element={<Contact />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           ) : (
