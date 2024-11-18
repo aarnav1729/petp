@@ -313,7 +313,7 @@ const VendorQuoteForm = ({ username }) => {
     {
       header: "9. Detention Charges",
       content: [
-        "PREMIER ENERGIES will pay detention charges as follows, effective after a free halting period of 24 hours from the time of arrival at the destination:",
+        "PREMIER ENERGIES will pay detention charges as follows, effective after a free halting period of 48 hours from the time of arrival at the destination:",
         "- Rs. 500 per day for LCV",
         "- Rs. 750 per day for FTL (17FT / 19FT)",
         "- Rs. 1,500 per day for Taurus, MXL, and SXL",
