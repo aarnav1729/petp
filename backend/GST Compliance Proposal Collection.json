@@ -1,0 +1,330 @@
+{
+	"info": {
+		"_postman_id": "7cd5678c-1733-40d8-b1d2-1d4fdf11dce6",
+		"name": "Premierenergies",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "29836210",
+		"_collection_link": "https://lunar-astronaut-562461.postman.co/workspace/My-Workspace~4301b444-f141-4376-86fe-c60a07cd8e35/collection/29836210-7cd5678c-1733-40d8-b1d2-1d4fdf11dce6?action=share&source=collection_link&creator=29836210"
+	},
+	"item": [
+		{
+			"name": "Auth API",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(responseBody);\r",
+							"pm.globals.set(\"token\", jsonData.token);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"accept": true
+				},
+				"strictSSL": false
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "Productid",
+						"value": "arap",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"username\": \"aarnav.singh@premierenergies.com\",\r\n    \"password\": \"Masters@4321\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://api-platform.mastersindia.co/api/v2/token-auth/?Authorization=JWT eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzE3MDUyNDYzLCJqdGkiOiI5OThkYzRiMjk5ZTc0ZjY3YTYxNmUyYzNjYTBhOGM2ZiIsInVzZXJfaWQiOjE0OCwidXNlcm5hbWUiOiJwcmF0ZWVrcmFpK2RlbW9AbWFzdGVyc2luZGlhLmNvIiwiZW1haWwiOiJwcmF0ZWVrcmFpK2RlbW9AbWFzdGVyc2luZGlhLmNvIiwib3JnX2lkIjpudWxsfQ.ETLixiEiD_JYHPjijDvfNcjEWS_GFnK0XI4qogwaX-Q\",",
+					"protocol": "https",
+					"host": [
+						"api-platform",
+						"mastersindia",
+						"co"
+					],
+					"path": [
+						"api",
+						"v2",
+						"token-auth",
+						""
+					],
+					"query": [
+						{
+							"key": "Authorization",
+							"value": "JWT eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzE3MDUyNDYzLCJqdGkiOiI5OThkYzRiMjk5ZTc0ZjY3YTYxNmUyYzNjYTBhOGM2ZiIsInVzZXJfaWQiOjE0OCwidXNlcm5hbWUiOiJwcmF0ZWVrcmFpK2RlbW9AbWFzdGVyc2luZGlhLmNvIiwiZW1haWwiOiJwcmF0ZWVrcmFpK2RlbW9AbWFzdGVyc2luZGlhLmNvIiwib3JnX2lkIjpudWxsfQ.ETLixiEiD_JYHPjijDvfNcjEWS_GFnK0XI4qogwaX-Q\","
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Fastag API",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"accept": true
+				},
+				"strictSSL": false
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "JWT {{token}}"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "Productid",
+						"value": "arap"
+					},
+					{
+						"key": "Subid",
+						"value": "226958"
+					},
+					{
+						"key": "mode",
+						"value": "Buyer"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n \"vehiclenumber\": \"HR55AL1020\"\r\n}"
+				},
+				"url": {
+					"raw": "https://api-platform.mastersindia.co/api/v2/sbt/FASTAG/",
+					"protocol": "https",
+					"host": [
+						"api-platform",
+						"mastersindia",
+						"co"
+					],
+					"path": [
+						"api",
+						"v2",
+						"sbt",
+						"FASTAG",
+						""
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "MH25F3O53",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "JWT {{token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Productid",
+								"value": "arap"
+							},
+							{
+								"key": "Subid",
+								"value": "5444"
+							},
+							{
+								"key": "mode",
+								"value": "Buyer"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n \"vehiclenumber\": \"MH25F3O53\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api-platform.mastersindia.co/api/v2/sbt/FASTAG/",
+							"protocol": "https",
+							"host": [
+								"api-platform",
+								"mastersindia",
+								"co"
+							],
+							"path": [
+								"api",
+								"v2",
+								"sbt",
+								"FASTAG",
+								""
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Wed, 25 Sep 2024 05:31:30 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "2137"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Allow",
+							"value": "POST, OPTIONS"
+						},
+						{
+							"key": "X-Frame-Options",
+							"value": "DENY"
+						},
+						{
+							"key": "Vary",
+							"value": "Accept-Language, Cookie, Origin"
+						},
+						{
+							"key": "Content-Language",
+							"value": "en"
+						},
+						{
+							"key": "Strict-Transport-Security",
+							"value": "max-age=2592000; includeSubDomains; preload"
+						},
+						{
+							"key": "X-Content-Type-Options",
+							"value": "nosniff"
+						},
+						{
+							"key": "X-XSS-Protection",
+							"value": "1; mode=block"
+						},
+						{
+							"key": "Referrer-Policy",
+							"value": "same-origin"
+						},
+						{
+							"key": "Content-Security-Policy",
+							"value": "img-src 'self' arap-backend.s3.amazonaws.com unsafe-inline; default-src 'self'; style-src 'self' arap-backend.s3.amazonaws.com unsafe-inline; font-src 'self' arap-backend.s3.amazonaws.com unsafe-inline; script-src 'self' arap-backend.s3.amazonaws.com unsafe-inline"
+						},
+						{
+							"key": "Permissions-Policy",
+							"value": "geolocation=(), microphone=()"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, POST"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"message\": \"Success\",\n    \"data\": {\n        \"response\": [\n            {\n                \"response\": {\n                    \"result\": \"SUCCESS\",\n                    \"respCode\": \"000\",\n                    \"ts\": \"2024-09-25T11:01:30\",\n                    \"vehicle\": {\n                        \"errCode\": \"000\",\n                        \"vehltxnList\": {\n                            \"totalTagsInMsg\": \"8\",\n                            \"msgNum\": \"1\",\n                            \"totalTagsInresponse\": \"8\",\n                            \"totalMsg\": \"1\",\n                            \"txn\": [\n                                {\n                                    \"readerReadTime\": \"2024-09-24 09:27:46.000\",\n                                    \"seqNo\": \"002001E88060002513751\",\n                                    \"laneDirection\": \"N\",\n                                    \"tollPlazaGeocode\": \"20.885548,73.052162\",\n                                    \"tollPlazaName\": \"Boriach Toll Plaza\",\n                                    \"vehicleType\": \"VC10\",\n                                    \"vehicleRegNo\": \"MH25F3O53\"\n                                },\n                                {\n                                    \"readerReadTime\": \"2024-09-24 01:51:12.000\",\n                                    \"seqNo\": \"002002E87060002285582\",\n                                    \"laneDirection\": \"S\",\n                                    \"tollPlazaGeocode\": \"19.890544,72.942644\",\n                                    \"tollPlazaName\": \"Charoti Toll Plaza\",\n                                    \"vehicleType\": \"VC10\",\n                                    \"vehicleRegNo\": \"MH25F3O53\"\n                                },\n                                {\n                                    \"readerReadTime\": \"2024-09-22 22:41:48.000\",\n                                    \"seqNo\": \"002002E87110000946901\",\n                                    \"laneDirection\": \"N\",\n                                    \"tollPlazaGeocode\": \"19.890544,72.942644\",\n                                    \"tollPlazaName\": \"Charoti Toll Plaza\",\n                                    \"vehicleType\": \"VC10\",\n                                    \"vehicleRegNo\": \"MH25F3O53\"\n                                },\n                                {\n                                    \"readerReadTime\": \"2024-09-24 07:32:28.000\",\n                                    \"seqNo\": \"002003E89060002463756\",\n                                    \"laneDirection\": \"S\",\n                                    \"tollPlazaGeocode\": \"20.43495,72.917204\",\n                                    \"tollPlazaName\": \"Bhagwada Toll Plaza\",\n                                    \"vehicleType\": \"VC10\",\n                                    \"vehicleRegNo\": \"MH25F3O53\"\n                                },\n                                {\n                                    \"readerReadTime\": \"2024-09-22 22:02:26.000\",\n                                    \"seqNo\": \"01000B2437939806924142\",\n                                    \"laneDirection\": \"S\",\n                                    \"tollPlazaGeocode\": \"20.07538,72.913338\",\n                                    \"tollPlazaName\": \"Achhad Border Checkpost\",\n                                    \"vehicleType\": \"VC10\",\n                                    \"vehicleRegNo\": \"MH25F3O53\"\n                                },\n                                {\n                                    \"readerReadTime\": \"2024-09-24 06:20:35.000\",\n                                    \"seqNo\": \"01000E2439102631833230\",\n                                    \"laneDirection\": \"N\",\n                                    \"tollPlazaGeocode\": \"20.07538,72.913338\",\n                                    \"tollPlazaName\": \"Achhad Border Checkpost\",\n                                    \"vehicleType\": \"VC10\",\n                                    \"vehicleRegNo\": \"MH25F3O53\"\n                                },\n                                {\n                                    \"readerReadTime\": \"2024-09-23 23:31:17.000\",\n                                    \"seqNo\": \"040001E86010001536579\",\n                                    \"laneDirection\": \"N\",\n                                    \"tollPlazaGeocode\": \"19.519667,72.916898\",\n                                    \"tollPlazaName\": \"Khaniwade Toll Plaza\",\n                                    \"vehicleType\": \"VC10\",\n                                    \"vehicleRegNo\": \"MH25F3O53\"\n                                },\n                                {\n                                    \"readerReadTime\": \"2024-09-23 00:01:44.000\",\n                                    \"seqNo\": \"040001E86070002983867\",\n                                    \"laneDirection\": \"S\",\n                                    \"tollPlazaGeocode\": \"19.519667,72.916898\",\n                                    \"tollPlazaName\": \"Khaniwade Toll Plaza\",\n                                    \"vehicleType\": \"VC10\",\n                                    \"vehicleRegNo\": \"MH25F3O53\"\n                                }\n                            ]\n                        }\n                    }\n                },\n                \"responseStatus\": \"SUCCESS\"\n            }\n        ],\n        \"error\": \"false\",\n        \"code\": \"200\",\n        \"message\": \"Success\"\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "VAHAN API (RC)",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"accept": true
+				},
+				"strictSSL": false
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "JWT {{token}}"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "productid",
+						"value": "arap"
+					},
+					{
+						"key": "subid",
+						"value": "226958"
+					},
+					{
+						"key": "mode",
+						"value": "Buyer"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n \"vehiclenumber\": \"HR55AL1020\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://api-platform.mastersindia.co/api/v2/sbt/VAHAN/",
+					"protocol": "https",
+					"host": [
+						"api-platform",
+						"mastersindia",
+						"co"
+					],
+					"path": [
+						"api",
+						"v2",
+						"sbt",
+						"VAHAN",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

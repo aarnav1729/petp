@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import PropTypes from "prop-types";  // Import PropTypes
 
-const NewRFQForm = () => {
+const NewRFQForm = ({ overrideFlag }) => {
   const [formData, setFormData] = useState({
     RFQNumber: "",
     shortName: "",
@@ -18,8 +19,6 @@ const NewRFQForm = () => {
     additionalVehicleDetails: "",
     numberOfVehicles: "",
     weight: "",
-    budgetedPriceBySalesDept: "",
-    maxAllowablePrice: "",
     vehiclePlacementBeginDate: "",
     vehiclePlacementEndDate: "",
     eReverseDate: "",
@@ -32,10 +31,14 @@ const NewRFQForm = () => {
     evaluationEndTime: "",
     address: "",
     pincode: "",
+    projectCode: "",
+    mw: "",
+    overrideFlag: overrideFlag,
   });
 
   const [vendors, setVendors] = useState([]);
   const [selectedVendors, setSelectedVendors] = useState([]);
+  const [salesOrders, setSalesOrders] = useState([]);
   const [districtOptions, setDistrictOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -783,17 +786,19 @@ const NewRFQForm = () => {
   useEffect(() => {
     fetchNextRFQNumber();
     fetchVendors();
+    fetchSalesOrders();
   }, []);
 
   const fetchNextRFQNumber = async () => {
     try {
       setIsLoading(true);
       const response = await axios.get(
-        "https://leaf-tn20.onrender.com/api/next-rfq-number"
+        "http://localhost:7707/api/next-rfq-number"
       );
       setFormData((prevData) => ({
         ...prevData,
         RFQNumber: response.data.RFQNumber,
+        overrideFlag,
       }));
     } catch (error) {
       console.error("Error fetching the next RFQ number:", error);
@@ -805,20 +810,38 @@ const NewRFQForm = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("https://leaf-tn20.onrender.com/api/vendors");
-      setVendors(response.data); // set vendor data
+      const response = await axios.get("http://localhost:7707/api/vendors");
+      setVendors(response.data);
     } catch (error) {
       console.error("Error fetching vendors:", error);
       alert("Failed to fetch vendors.");
     }
   };
 
+
+  useEffect(() => {
+    // Log to verify that overrideFlag is updated properly
+    console.log("Override Flag in SalesOrders.jsx:", overrideFlag);
+  }, [overrideFlag]);
+
+
+  const fetchSalesOrders = async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:7707/api/sales/orders"
+      );
+      setSalesOrders(response.data);
+    } catch (error) {
+      console.error("Error fetching sales orders:", error);
+    }
+  };
+
   const handleVendorSelection = (vendorId) => {
     setSelectedVendors((prevSelected) => {
       if (prevSelected.includes(vendorId)) {
-        return prevSelected.filter((id) => id !== vendorId); // deselect
+        return prevSelected.filter((id) => id !== vendorId);
       } else {
-        return [...prevSelected, vendorId]; // select
+        return [...prevSelected, vendorId];
       }
     });
   };
@@ -826,17 +849,20 @@ const NewRFQForm = () => {
   const handleSelectAllVendors = (e) => {
     const isChecked = e.target.checked;
     if (isChecked) {
-      // select all vendors
       const allVendorIds = vendors.map((vendor) => vendor._id);
       setSelectedVendors(allVendorIds);
     } else {
-      // deselect all vendors
       setSelectedVendors([]);
     }
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    if (name === "projectCode") {
+      // Log overrideFlag when the projectCode dropdown is changed
+      console.log('Override Flag for selected Project Code:', overrideFlag);
+    }
 
     if (name === "dropLocationState") {
       setFormData((prevData) => ({
@@ -848,7 +874,6 @@ const NewRFQForm = () => {
       return;
     }
 
-    // Reset custom fields when dropdown changes
     if (name === "itemType" && value !== "Others") {
       setFormData((prevData) => ({
         ...prevData,
@@ -869,15 +894,7 @@ const NewRFQForm = () => {
     }
 
     let error = "";
-    if (
-      [
-        "RFQNumber",
-        "weight",
-        "budgetedPriceBySalesDept",
-        "maxAllowablePrice",
-        "numberOfVehicles",
-      ].includes(name)
-    ) {
+    if (["RFQNumber", "weight", "numberOfVehicles"].includes(name)) {
       if (!/^\d*$/.test(value)) {
         error = "This field must be a number.";
       }
@@ -890,15 +907,12 @@ const NewRFQForm = () => {
         error = "Pincode must be exactly 6 digits and contain only numbers.";
       }
     }
-
-    // Add this validation block for 'weight'
     if (name === "weight" && value !== "") {
       const numericValue = parseInt(value, 10);
       if (isNaN(numericValue) || numericValue < 1 || numericValue > 99) {
         error = "Weight must be a number between 1 and 99.";
       }
     }
-
     if (name === "eReverseToggle") {
       setFormData((prevData) => ({
         ...prevData,
@@ -918,7 +932,7 @@ const NewRFQForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (formData.itemType === "Others" && !formData.customItemType.trim()) {
       alert("Please specify the Item Type.");
       return;
@@ -930,7 +944,6 @@ const NewRFQForm = () => {
       alert("Please specify the Vehicle Type.");
       return;
     }
-
     if (Object.values(errors).some((error) => error)) {
       alert(
         "Please fix the following errors:\n" +
@@ -944,19 +957,44 @@ const NewRFQForm = () => {
       );
       return;
     }
-
+  
     setIsLoading(true);
+  
     try {
-      const eReverseDateTime = formData.eReverseToggle
-        ? new Date(`${formData.eReverseDate}T${formData.eReverseTime}`)
-        : null;
-
+      // Check if overrideFlag is not true, proceed with MW check
+      if (!formData.overrideFlag) {
+        try {
+          // Call the API to check remaining MW
+          const salesOrderRes = await axios.get(
+            `http://localhost:7707/api/sales/orders/${formData.projectCode}/remaining-mw?override=${formData.overrideFlag}`
+          );
+          const remainingMW = Number(salesOrderRes.data.remainingMW);
+          const rfqMW = Number(formData.mw);
+  
+          // If RFQ MW exceeds remaining MW, show an alert and prevent submission
+          if (rfqMW > remainingMW) {
+            alert(
+              `Only ${remainingMW} MW is remaining for the selected project code: ${formData.projectCode}. Please adjust the MW value.`
+            );
+            setIsLoading(false);
+            return;
+          }
+        } catch (checkError) {
+          console.error("Error checking remaining MW:", checkError);
+          alert("Failed to verify Sales Order MW. Please try again.");
+          setIsLoading(false);
+          return;
+        }
+      }
+  
       const dataToSend = {
         ...formData,
         selectedVendors,
         initialQuoteEndTime: formData.initialQuoteEndTime,
         evaluationEndTime: formData.evaluationEndTime,
-        eReverseDate: eReverseDateTime,
+        eReverseDate: formData.eReverseToggle
+          ? new Date(`${formData.eReverseDate}T${formData.eReverseTime}`)
+          : null,
         itemType:
           formData.itemType === "Others"
             ? formData.customItemType
@@ -966,19 +1004,16 @@ const NewRFQForm = () => {
             ? formData.customVehicleType
             : formData.vehicleType,
       };
-
+  
       delete dataToSend.customItemType;
       delete dataToSend.customVehicleType;
-
+  
       const response = await axios.post(
-        "https://leaf-tn20.onrender.com/api/rfq",
+        "http://localhost:7707/api/rfq",
         dataToSend
       );
-
-      if (
-        response.status === 201 &&
-        response.data.message === "RFQ created and email sent successfully"
-      ) {
+  
+      if (response.status === 201 && response.data.message === "RFQ created and email sent successfully") {
         alert("RFQ submitted successfully!");
         setFormData({
           RFQNumber: "",
@@ -996,8 +1031,6 @@ const NewRFQForm = () => {
           additionalVehicleDetails: "",
           numberOfVehicles: "",
           weight: "",
-          budgetedPriceBySalesDept: "",
-          maxAllowablePrice: "",
           vehiclePlacementBeginDate: "",
           vehiclePlacementEndDate: "",
           eReverseDate: "",
@@ -1010,6 +1043,9 @@ const NewRFQForm = () => {
           evaluationEndTime: "",
           pincode: "",
           address: "",
+          projectCode: "",
+          mw: "",
+          overrideFlag: false,
         });
         fetchNextRFQNumber();
       } else {
@@ -1028,6 +1064,7 @@ const NewRFQForm = () => {
     }
   };
 
+
   return (
     <div className="container mx-auto mt-8 px-4 py-6 bg-transparent text-black rounded-lg shadow-lg border border-black">
       <h2 className="text-2xl font-bold mb-6 text-center">Create New RFQ</h2>
@@ -1043,6 +1080,44 @@ const NewRFQForm = () => {
             value={formData.RFQNumber}
             readOnly
             placeholder={isLoading ? "Loading..." : "RFQ Number"}
+            className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            required
+          />
+        </div>
+
+        {/* New Project Code dropdown instead of Sales Order Number */}
+        <div className="mb-4">
+          <label className="block text-xl text-black">Project Code</label>
+          <select
+            name="projectCode"
+            value={formData.projectCode}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            required
+          >
+            <option value="">Select Project Code</option>
+            {salesOrders.length > 0 ? (
+              salesOrders.map((order) => (
+                <option key={order._id} value={order.projectCode}>
+                  {order.projectCode}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>
+                No Sales Orders Available
+              </option>
+            )}
+          </select>
+        </div>
+
+        {/* New MW field */}
+        <div className="mb-4">
+          <label className="block text-xl text-black">MW</label>
+          <input
+            type="number"
+            name="mw"
+            value={formData.mw}
+            onChange={handleChange}
             className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
           />
@@ -1258,7 +1333,7 @@ const NewRFQForm = () => {
           {errors.pincode && (
             <p className="text-red-600 font-bold mt-1">{errors.pincode}</p>
           )}
-        </div> 
+        </div>
 
         <div className="mb-4">
           <label className="block text-xl font-medium text-black">
@@ -1358,44 +1433,6 @@ const NewRFQForm = () => {
           />
           {errors.weight && (
             <p className="text-red-600 font-bold mt-1">{errors.weight}</p>
-          )}
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-xl font-medium text-black">
-            Budgeted Price By Sales Dept.
-          </label>
-          <input
-            type="text"
-            name="budgetedPriceBySalesDept"
-            value={formData.budgetedPriceBySalesDept}
-            onChange={handleChange}
-            className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            required
-          />
-          {errors.budgetedPriceBySalesDept && (
-            <p className="text-red-600 font-bold mt-1">
-              {errors.budgetedPriceBySalesDept}
-            </p>
-          )}
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-xl font-medium text-black">
-            Max Allowable Price
-          </label>
-          <input
-            type="text"
-            name="maxAllowablePrice"
-            value={formData.maxAllowablePrice}
-            onChange={handleChange}
-            className="mt-1 block w-full px-3 py-2 border bg-gray-200 hover:bg-white border-black rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            required
-          />
-          {errors.maxAllowablePrice && (
-            <p className="text-red-600 font-bold mt-1">
-              {errors.maxAllowablePrice}
-            </p>
           )}
         </div>
 
@@ -1559,7 +1596,6 @@ const NewRFQForm = () => {
                           htmlFor="selectAllVendors"
                           className="text-white"
                         >
-                          
                           Select All
                         </label>
                       </div>
@@ -1612,6 +1648,11 @@ const NewRFQForm = () => {
       </form>
     </div>
   );
+};
+
+// Add PropTypes validation for overrideFlag
+NewRFQForm.propTypes = {
+  overrideFlag: PropTypes.bool.isRequired,  // Validate that overrideFlag is a required boolean
 };
 
 export default NewRFQForm;

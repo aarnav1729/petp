@@ -14,6 +14,8 @@ const Header = ({ role, onLogout }) => {
           { to: "/rfq-list", label: "RFQ List" },
           { to: "/vendor-list", label: "Users" },
           { to: "/accounts", label: "Accounts" },
+          { to: "/mdview", label: "CXO" },
+          { to: "/fastag-tracking", label: "FT"},
         ]
       : role === "vendor"
       ? [
@@ -24,6 +26,7 @@ const Header = ({ role, onLogout }) => {
       ? [
           { to: "/new-rfq", label: "New RFQ" },
           { to: "/factory-rfq-list", label: "RFQ List" },
+          { to: "/tfr", label: "TFR" },
         ]
       : [
           { to: "/terms", label: "Terms & Conditions" },

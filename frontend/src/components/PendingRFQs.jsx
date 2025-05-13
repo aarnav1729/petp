@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const PendingRFQs = ({ username }) => {
   const [pendingRFQs, setPendingRFQs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     const fetchPendingRFQs = async () => {
       try {
-        const response = await axios.get(          
+        console.log('Fetching pending RFQs for username:', username);
+        const response = await axios.get(
           `https://leaf-tn20.onrender.com/api/vendor-pending-rfqs/${username}`
         );
         setPendingRFQs(response.data);
@@ -86,7 +90,11 @@ const PendingRFQs = ({ username }) => {
           </thead>
           <tbody className="bg-white divide-y divide-black">
             {pendingRFQs.map((rfq) => (
-              <tr key={rfq._id} className="cursor-pointer hover:bg-blue-200">
+              <tr
+                key={rfq._id}
+                className="cursor-pointer hover:bg-blue-200"
+                onClick={() => navigate(`/vendor/rfq/${rfq._id}/lr-numbers`)} // Add this line
+              >
                 {/* Existing Data */}
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                   {rfq.RFQNumber}

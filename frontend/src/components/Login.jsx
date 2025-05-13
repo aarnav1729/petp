@@ -90,7 +90,7 @@ const Login = ({ onLogin }) => {
                   password,
                   email,
                   contactNumber,
-                  role,
+                  role, // Include the selected role
                 }
               );
 
@@ -205,7 +205,8 @@ const Login = ({ onLogin }) => {
                     className="w-full p-3 border bg-gray-200 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-black"
                   >
                     <option value="vendor">Vendor</option>
-                    <option value="factory">Factory User</option>
+                    <option value="factory">Factory</option>
+                    <option value="sales">Sales</option>
                   </select>
                 </div>
 

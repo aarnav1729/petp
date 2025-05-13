@@ -1,0 +1,67 @@
+/* CollapsibleSection.css */
+
+.collapsible-section {
+  position: relative;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.1));
+  backdrop-filter: blur(15px);
+  border-radius: 16px;
+  margin: 10px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  width: calc(33% - 20px); /* Default to square size for small tiles */
+  height: 250px; /* Default to square size */
+  display: inline-block;
+  vertical-align: top;
+}
+
+.collapsible-section.expanded {
+  width: calc(100% - 20px); /* Full width when expanded */
+  height: auto; /* Height will be adjusted dynamically by content */
+}
+
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #ffffff;
+  font-family: "Chakra Petch", sans-serif;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  height: 80px; /* Adjust height for more balanced tile appearance */
+}
+
+.collapsible-header h2 {
+  margin: 0;
+  font-size: 1.2em;
+}
+
+.collapsible-header .description {
+  font-size: 0.9em;
+  font-weight: 400;
+  color: #cccccc;
+}
+
+.toggle-icon {
+  font-size: 1.8em;
+  transition: transform 0.3s ease;
+}
+
+.toggle-icon.closed {
+  transform: rotate(90deg);
+}
+
+.collapsible-content {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.collapsible-content > * {
+  padding: 20px;
+  color: #ffffff;
+}

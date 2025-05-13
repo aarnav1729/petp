@@ -11,6 +11,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 //const sql = require('mssql');
 const path = require("path");
+const axios = require("axios");
 
 // outlook emails
 const { Client } = require("@microsoft/microsoft-graph-client");
@@ -263,6 +264,35 @@ async function sendRFQEmail(rfqData, selectedVendorIds) {
   }
 }
 
+// Updated SalesOrder schema – remove maxAllowablePrice and rename/restructure fields
+const salesOrderSchema = new mongoose.Schema(
+  {
+    // For backward compatibility we keep the old orderNumber as an optional legacy field.
+    orderNumber: { type: String },
+    // New fields:
+    projectCode: { type: String, required: true, unique: true },
+    customerName: { type: String, required: true },
+    projectCapacity: { type: Number, required: true }, // in MW
+    siteLocation: { type: String, required: true },
+    budgetedPrice: { type: Number, required: true }, // price per MW
+    canOverride: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
+// Pre-validate hook to compute projectCode if not provided (for legacy records)
+salesOrderSchema.pre("validate", function (next) {
+  if (!this.projectCode) {
+    // If orderNumber exists (legacy), use it; otherwise compute from new fields.
+    this.projectCode =
+      this.orderNumber ||
+      `${this.customerName}-${this.projectCapacity}-${this.siteLocation}`;
+  }
+  next();
+});
+
+const SalesOrder = mongoose.model("SalesOrder", salesOrderSchema);
+
 // vendor schema and model
 const vendorSchema = new mongoose.Schema({
   username: { type: String, unique: true },
@@ -270,6 +300,7 @@ const vendorSchema = new mongoose.Schema({
   password: String,
   email: { type: String, unique: true, required: true },
   contactNumber: { type: String, unique: true, required: true },
+  grade: { type: String, default: "A", enum: ["A", "B", "C", "D"] },
 });
 
 const Vendor = mongoose.model("Vendor", vendorSchema);
@@ -286,6 +317,10 @@ const quoteSchema = new mongoose.Schema(
     validityPeriod: String,
     label: String,
     trucksAllotted: Number,
+    actualTrucksProvided: {
+      type: Number,
+      default: 0,
+    },
     numberOfVehiclesPerDay: {
       type: Number,
       required: true,
@@ -298,13 +333,25 @@ const quoteSchema = new mongoose.Schema(
 
 const Quote = mongoose.model("Quote", quoteSchema);
 
+// sales schema and model
+const salesSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  salesName: { type: String, unique: true },
+  password: String,
+  email: { type: String, unique: true, required: true },
+  contactNumber: { type: String, unique: true, required: true },
+  // Add any additional fields specific to "sales" users here
+});
+
+const Sales = mongoose.model("Sales", salesSchema);
+
 // user schema and model
 const userSchema = new mongoose.Schema({
   username: { type: String, unique: true },
   password: String,
   email: { type: String, unique: true, required: true },
   contactNumber: { type: String, unique: true, required: true },
-  role: { type: String, enum: ["vendor", "factory"], required: true },
+  role: { type: String, enum: ["vendor", "factory", "sales"], required: true },
   status: { type: String, enum: ["pending", "approved"], default: "pending" },
 });
 
@@ -339,7 +386,6 @@ const rfqSchema = new mongoose.Schema(
     numberOfVehicles: Number,
     weight: String,
     budgetedPriceBySalesDept: Number,
-    maxAllowablePrice: Number,
     eReverseDate: { type: Date, required: false },
     eReverseTime: { type: String, required: false },
     vehiclePlacementBeginDate: Date,
@@ -359,6 +405,8 @@ const rfqSchema = new mongoose.Schema(
     eReverseToggle: { type: Boolean, default: false },
     rfqType: { type: String, enum: ["Long Term", "D2D"], default: "D2D" },
     selectedVendors: [{ type: mongoose.Schema.Types.ObjectId, ref: "Vendor" }],
+    projectCode: { type: String },
+    mw: { type: Number },
     vendorActions: [
       {
         action: String, // "addedAtCreation", "added", "reminderSent"
@@ -370,6 +418,14 @@ const rfqSchema = new mongoose.Schema(
   { timestamps: true } // Adds createdAt and updatedAt fields
 );
 
+// For legacy records: if projectCode is not set but salesOrderNumber exists, assign it.
+rfqSchema.pre("save", function (next) {
+  if (!this.projectCode && this.salesOrderNumber) {
+    this.projectCode = this.salesOrderNumber;
+  }
+  next();
+});
+
 const RFQ = mongoose.model("RFQ", rfqSchema);
 
 // verification schema and model
@@ -380,6 +436,15 @@ const verificationSchema = new mongoose.Schema({
 });
 
 const Verification = mongoose.model("Verification", verificationSchema);
+
+// LRNumber schema and model
+const lrNumberSchema = new mongoose.Schema({
+  rfqId: { type: mongoose.Schema.Types.ObjectId, ref: "RFQ" },
+  vendorName: String,
+  lrNumbers: [String],
+});
+
+const LRNumber = mongoose.model("LRNumber", lrNumberSchema);
 
 // api endpoints
 
@@ -523,6 +588,18 @@ app.post("/api/approve-account/:id", async (req, res) => {
       await newVendor.save();
     }
 
+    // If the user is a sales, create an entry in the Sales collection
+    else if (user.role === "sales") {
+      const newSales = new Sales({
+        username: user.username,
+        salesName: user.username, // You can modify this if there's a separate field
+        password: user.password,
+        email: user.email,
+        contactNumber: user.contactNumber,
+      });
+      await newSales.save();
+    }
+
     // create the email content
     const emailContent = {
       message: {
@@ -622,6 +699,267 @@ app.post("/api/approve-account/:id", async (req, res) => {
   }
 });*/
 }
+
+app.get("/api/vendors/participation-conversion", async (req, res) => {
+  try {
+    // Fetch all vendors
+    const vendors = await Vendor.find();
+
+    // Initialize result array
+    const results = [];
+
+    for (const vendor of vendors) {
+      // Step 1: Fetch the total number of RFQs sent to this vendor
+      const rfqsInvited = await RFQ.countDocuments({
+        selectedVendors: vendor._id,
+      });
+
+      // Step 2: Count RFQs where the vendor placed a bid
+      const rfqsParticipated = await Quote.countDocuments({
+        vendorName: vendor.vendorName,
+      });
+
+      // Step 3: Count RFQs where trucks were allotted to this vendor
+      const rfqsConverted = await Quote.countDocuments({
+        vendorName: vendor.vendorName,
+        trucksAllotted: { $gt: 0 },
+      });
+
+      // Step 4: Calculate participation and conversion rates
+      const participationRate =
+        rfqsInvited > 0 ? (rfqsParticipated / rfqsInvited) * 100 : 0;
+      const conversionRate =
+        rfqsParticipated > 0 ? (rfqsConverted / rfqsParticipated) * 100 : 0;
+
+      // Add vendor's stats to the result array
+      results.push({
+        vendorName: vendor.vendorName,
+        email: vendor.email,
+        contactNumber: vendor.contactNumber,
+        rfqsInvited,
+        rfqsParticipated,
+        rfqsConverted,
+        participationRate: participationRate.toFixed(2),
+        conversionRate: conversionRate.toFixed(2),
+      });
+    }
+
+    // Send the results as response
+    res.status(200).json(results);
+  } catch (error) {
+    console.error("Error fetching participation and conversion rates:", error);
+    res.status(500).json({
+      error: "Failed to fetch participation and conversion rates.",
+    });
+  }
+});
+
+app.get("/api/vendor/rfq/:rfqId/details/:vendorName", async (req, res) => {
+  try {
+    const { rfqId, vendorName } = req.params;
+
+    // Fetch the RFQ
+    const rfq = await RFQ.findById(rfqId);
+    if (!rfq) {
+      return res.status(404).json({ error: "RFQ not found" });
+    }
+
+    // Fetch the vendor's quote
+    const vendorQuote = await Quote.findOne({
+      rfqId,
+      vendorName,
+    });
+
+    if (!vendorQuote || vendorQuote.trucksAllotted <= 0) {
+      return res.status(400).json({
+        error: "No trucks allotted to this vendor for this RFQ.",
+      });
+    }
+
+    // Fetch existing LR numbers if any
+    const lrNumberEntry = await LRNumber.findOne({
+      rfqId,
+      vendorName,
+    });
+
+    res.status(200).json({
+      rfq,
+      trucksAllotted: vendorQuote.trucksAllotted,
+      lrNumbers: lrNumberEntry ? lrNumberEntry.lrNumbers : [],
+    });
+  } catch (error) {
+    console.error("Error fetching RFQ details:", error);
+    res.status(500).json({ error: "Failed to fetch RFQ details." });
+  }
+});
+
+app.post("/api/vendor/rfq/:rfqId/submit-lr-numbers", async (req, res) => {
+  try {
+    const { rfqId } = req.params;
+    const { username: vendorName, lrNumbers } = req.body;
+
+    // Fetch the vendor's quote
+    const vendorQuote = await Quote.findOne({
+      rfqId,
+      vendorName,
+    });
+
+    if (!vendorQuote || vendorQuote.trucksAllotted <= 0) {
+      return res.status(400).json({
+        error: "No trucks allotted to this vendor for this RFQ.",
+      });
+    }
+
+    if (lrNumbers.length !== vendorQuote.trucksAllotted) {
+      return res.status(400).json({
+        error: `Please provide LR numbers for all ${vendorQuote.trucksAllotted} trucks allotted.`,
+      });
+    }
+
+    // Save or update LR numbers
+    const existingEntry = await LRNumber.findOne({
+      rfqId,
+      vendorName,
+    });
+
+    if (existingEntry) {
+      existingEntry.lrNumbers = lrNumbers;
+      await existingEntry.save();
+    } else {
+      const newLRNumber = new LRNumber({
+        rfqId,
+        vendorName,
+        lrNumbers,
+      });
+      await newLRNumber.save();
+    }
+
+    res.status(200).json({ message: "LR Numbers submitted successfully." });
+  } catch (error) {
+    console.error("Error submitting LR Numbers:", error);
+    res.status(500).json({ error: "Failed to submit LR Numbers." });
+  }
+});
+
+// endpoint to fetch all RFQs
+// endpoint to fetch all relevant RFQs
+app.get("/api/tfr/rfqs", async (req, res) => {
+  try {
+    // Fetch RFQs with statuses you want to include
+    const rfqs = await RFQ.find({
+      status: { $in: ["initial", "evaluation", "closed"] },
+    });
+    res.status(200).json(rfqs);
+  } catch (error) {
+    console.error("Error fetching RFQs:", error);
+    res.status(500).json({ error: "Failed to fetch RFQs" });
+  }
+});
+
+// endpoint to fetch vendors and their allotted trucks for a specific RFQ
+// endpoint to fetch all vendors and their quotes for a specific RFQ
+app.get("/api/tfr/rfqs/:rfqId/vendors", async (req, res) => {
+  const { rfqId } = req.params;
+  try {
+    // Fetch all quotes for the RFQ
+    const quotes = await Quote.find({ rfqId });
+    res.status(200).json(quotes);
+  } catch (error) {
+    console.error("Error fetching vendors for RFQ:", error);
+    res.status(500).json({ error: "Failed to fetch vendors for RFQ" });
+  }
+});
+
+// endpoint to update actual trucks provided by vendors for an RFQ
+app.post("/api/tfr/rfqs/:rfqId/update-trucks", async (req, res) => {
+  const { rfqId } = req.params;
+  const { trucksData } = req.body;
+
+  try {
+    for (const data of trucksData) {
+      const { quoteId, actualTrucksProvided } = data;
+
+      // Fetch the quote to get trucksAllotted
+      const quote = await Quote.findById(quoteId);
+
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+
+      if (
+        actualTrucksProvided < 0 ||
+        actualTrucksProvided > quote.trucksAllotted
+      ) {
+        return res.status(400).json({
+          error: `Actual trucks provided cannot exceed trucks allotted for vendor ${quote.vendorName}`,
+        });
+      }
+
+      // Update the quote
+      await Quote.findByIdAndUpdate(quoteId, {
+        actualTrucksProvided,
+      });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Actual trucks provided updated successfully" });
+  } catch (error) {
+    console.error("Error updating actual trucks provided:", error);
+    res.status(500).json({ error: "Failed to update actual trucks provided" });
+  }
+});
+
+// Endpoint to update Max Allowable Price and Budgeted Price for an RFQ
+app.patch("/api/rfq/:id/update-prices", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { maxAllowablePrice, budgetedPriceBySalesDept } = req.body;
+
+    // Validate input
+    if (
+      maxAllowablePrice === undefined ||
+      budgetedPriceBySalesDept === undefined
+    ) {
+      return res.status(400).json({
+        error:
+          "Both maxAllowablePrice and budgetedPriceBySalesDept are required.",
+      });
+    }
+
+    if (
+      typeof maxAllowablePrice !== "number" ||
+      typeof budgetedPriceBySalesDept !== "number"
+    ) {
+      return res.status(400).json({
+        error:
+          "maxAllowablePrice and budgetedPriceBySalesDept must be numbers.",
+      });
+    }
+
+    // Find and update the RFQ
+    const updatedRFQ = await RFQ.findByIdAndUpdate(
+      id,
+      {
+        maxAllowablePrice,
+        budgetedPriceBySalesDept,
+      },
+      { new: true }
+    );
+
+    if (!updatedRFQ) {
+      return res.status(404).json({ error: "RFQ not found." });
+    }
+
+    res.status(200).json({
+      message: "RFQ prices updated successfully.",
+      rfq: updatedRFQ,
+    });
+  } catch (error) {
+    console.error("Error updating RFQ prices:", error);
+    res.status(500).json({ error: "Failed to update RFQ prices." });
+  }
+});
 
 // endpoint for vendor registration
 app.post("/api/register", async (req, res) => {
@@ -1858,6 +2196,100 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
       }
     }
 
+    // ***** New code: Send additional sales alert email if price per MW exceeds Budgeted Cost *****
+    const totalLogisticsPriceCalculated = logisticsAllocation.reduce(
+      (sum, alloc) => sum + alloc.price * alloc.trucksAllotted,
+      0
+    );
+    const mwValue = Number(rfq.mw);
+    console.log(
+      "Sales Alert Calculation: totalLogisticsPriceCalculated =",
+      totalLogisticsPriceCalculated,
+      "; rfq.mw =",
+      rfq.mw,
+      "; mwValue =",
+      mwValue
+    );
+    if (mwValue > 0 && rfq.projectCode) {
+      // Look up the SalesOrder using the projectCode field
+      const salesOrder = await SalesOrder.findOne({
+        projectCode: rfq.projectCode,
+      });
+      if (salesOrder) {
+        // Use the new budgetedPrice field from SalesOrder
+        const budgetedCost = Number(salesOrder.budgetedPrice);
+        const pricePerMW = ((totalLogisticsPriceCalculated / mwValue)/1000000);
+        console.log(
+          "Sales Alert Calculation: pricePerMW =",
+          pricePerMW,
+          "; budgetedCost =",
+          budgetedCost
+        );
+        if (pricePerMW > budgetedCost) {
+          console.log(
+            "Condition met: pricePerMW (" +
+              pricePerMW.toFixed(2) +
+              ") exceeds budgetedCost (" +
+              budgetedCost +
+              "). Sending sales alert email."
+          );
+          const salesAlertEmail = {
+            message: {
+              subject: `Alert: ${rfq.RFQNumber} Final Price in INR/Wp Exceeds Budgeted Price`,
+              body: {
+                contentType: "HTML",
+                content: `
+              <p>The final price in INR/Wp for ${
+                rfq.RFQNumber
+              } is ${pricePerMW.toFixed(
+                  2
+                )}, which exceeds the budgeted cost of ${budgetedCost}.</p>
+              <p>Please review the RFQ allocation details.</p>
+            `,
+              },
+              toRecipients: [
+                {
+                  emailAddress: { address: "aarnav.singh@premierenergies.com" },
+                },
+              ],
+              from: { emailAddress: { address: SENDER_EMAIL } },
+            },
+          };
+          try {
+            await client
+              .api(`/users/${SENDER_EMAIL}/sendMail`)
+              .post(salesAlertEmail);
+            console.log("Sales alert email sent successfully.");
+          } catch (err) {
+            console.error("Error sending sales alert email:", err);
+          }
+        } else {
+          console.log(
+            "Condition not met: pricePerMW (" +
+              pricePerMW.toFixed(2) +
+              ") does not exceed budgetedCost (" +
+              budgetedCost +
+              "). Sales alert email not sent."
+          );
+        }
+      } else {
+        console.log("Sales order not found for project code:", rfq.projectCode);
+      }
+    } else {
+      if (mwValue <= 0) {
+        console.log(
+          "Invalid MW value (mwValue =",
+          mwValue,
+          "). Skipping sales alert email."
+        );
+      }
+      if (!rfq.projectCode) {
+        console.log(
+          "Project code not provided in RFQ. Skipping sales alert email."
+        );
+      }
+    }
+
     // Update the RFQ status to 'closed' and save the finalizeReason
     rfq.status = "closed";
     if (finalizeReason) {
@@ -1870,6 +2302,7 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
       const quote = await Quote.findOne({
         rfqId: id,
         vendorName: alloc.vendorName,
+        
       });
       if (quote) {
         quote.price = alloc.price;
@@ -1935,24 +2368,27 @@ app.get("/api/vendor-pending-rfqs/:vendorName", async (req, res) => {
   try {
     const { vendorName } = req.params;
 
-    // fetch quotes where the vendor has participated
-    const quotes = await Quote.find({ vendorName });
-    const rfqIds = quotes.map((quote) => quote.rfqId);
+    // Fetch quotes where the vendor has been allocated at least one truck
+    const vendorQuotes = await Quote.find({
+      vendorName,
+      trucksAllotted: { $gt: 0 },
+    });
 
-    // find RFQs that the vendor bid on and have status 'closed'
+    const rfqIds = vendorQuotes.map((quote) => quote.rfqId);
+
+    // Find RFQs that are closed and where the vendor has been allocated trucks
     const rfqs = await RFQ.find({
       _id: { $in: rfqIds },
       status: "closed",
     });
 
-    // for each RFQ, find the vendor's quote and extract necessary details
+    // For each RFQ, find the vendor's quote and extract necessary details
     const pendingRFQs = await Promise.all(
       rfqs.map(async (rfq) => {
-        // fetch the vendor's quote for this RFQ
-        const vendorQuote = await Quote.findOne({
-          rfqId: rfq._id,
-          vendorName,
-        });
+        // Fetch the vendor's quote for this RFQ
+        const vendorQuote = vendorQuotes.find(
+          (quote) => quote.rfqId.toString() === rfq._id.toString()
+        );
 
         return {
           _id: rfq._id,
@@ -1976,9 +2412,108 @@ app.get("/api/vendor-pending-rfqs/:vendorName", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch pending RFQs." });
   }
 });
+// GET endpoint to fetch all sales orders
+app.get("/api/sales/orders", async (req, res) => {
+  try {
+    const orders = await SalesOrder.find().sort({ createdAt: -1 });
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("Error fetching sales orders:", error);
+    res.status(500).json({ error: "Failed to fetch sales orders" });
+  }
+});
+
+// Updated endpoint: Get remaining MW for a given Sales Order by projectCode
+// Updated endpoint to get remaining MW for a given Sales Order by projectCode
+app.get("/api/sales/orders/:projectCode/remaining-mw", async (req, res) => {
+  try {
+    const { projectCode } = req.params;
+    const { override } = req.query; // Get override flag from query params
+
+    // If override flag is true, skip the MW check
+    if (override === "true") {
+      return res.status(200).json({ remainingMW: "Override enabled, skipping check." });
+    }
+
+    // Find the sales order by projectCode
+    const salesOrder = await SalesOrder.findOne({ projectCode });
+    if (!salesOrder) {
+      return res.status(404).json({ error: "Sales order not found" });
+    }
+
+    // Sum the MW values of all RFQs that reference this sales order via projectCode
+    const rfqs = await RFQ.find({ projectCode: projectCode });
+    const usedMW = rfqs.reduce((sum, rfq) => sum + Number(rfq.mw || 0), 0);
+    const remainingMW = salesOrder.projectCapacity - usedMW;
+
+    res.status(200).json({ remainingMW });
+  } catch (error) {
+    console.error("Error calculating remaining MW:", error);
+    res.status(500).json({ error: "Failed to calculate remaining MW" });
+  }
+});
+
+
+// Updated endpoint to create a new Sales Order using new fields
+app.post("/api/sales/orders", async (req, res) => {
+  try {
+    const {
+      customerName,
+      projectCapacity,
+      siteLocation,
+      budgetedPrice,
+      projectCode,
+    } = req.body;
+    if (!customerName || !projectCapacity || !siteLocation || !budgetedPrice) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+    const newOrder = new SalesOrder({
+      customerName,
+      projectCapacity,
+      siteLocation,
+      budgetedPrice,
+      projectCode, // For new records, the client sends the computed projectCode.
+    });
+    await newOrder.save();
+    res.status(201).json({ message: "Sales order created successfully" });
+  } catch (error) {
+    console.error("Error creating sales order:", error);
+    res.status(500).json({ error: "Failed to create sales order" });
+  }
+});
+
+// Endpoint to toggle canOverride flag
+// New endpoint to toggle the canOverride flag (index.js)
+app.patch("/api/sales/orders/:projectCode/override", async (req, res) => {
+  try {
+    const { projectCode } = req.params;
+    const { canOverride } = req.body;
+
+    // Validate input
+    if (typeof canOverride !== "boolean") {
+      return res.status(400).json({ error: "canOverride must be a boolean" });
+    }
+
+    // Update the sales order
+    const salesOrder = await SalesOrder.findOneAndUpdate(
+      { projectCode },
+      { canOverride },
+      { new: true }
+    );
+
+    if (!salesOrder) {
+      return res.status(404).json({ error: "Sales order not found" });
+    }
+
+    res.status(200).json({ message: "Sales order updated", salesOrder });
+  } catch (error) {
+    console.error("Error updating sales order:", error);
+    res.status(500).json({ error: "Failed to update sales order" });
+  }
+});
+
 
 // endpoint to update a quote's price and trucks allotted (for factory user)
-
 app.put("/api/quote/factory/:quoteId", async (req, res) => {
   try {
     const { quoteId } = req.params;
@@ -2220,6 +2755,137 @@ app.post("/api/send-terms-agreement-email", async (req, res) => {
   }
 });
 
+app.get("/api/md/top-vendors", async (req, res) => {
+  try {
+    const topVendors = await Quote.aggregate([
+      {
+        $group: {
+          _id: "$vendorName",
+          totalTrucksAllotted: { $sum: "$trucksAllotted" },
+        },
+      },
+      {
+        $sort: { totalTrucksAllotted: -1 },
+      },
+      {
+        $limit: 5,
+      },
+      {
+        $project: {
+          vendorName: "$_id",
+          totalTrucksAllotted: 1,
+          _id: 0,
+        },
+      },
+    ]);
+
+    res.status(200).json(topVendors);
+  } catch (error) {
+    console.error("Error fetching top vendors data:", error);
+    res.status(500).json({ error: "Failed to fetch data" });
+  }
+});
+
+// api endpoint for geographical distribution data
+app.get("/api/md/geographical-distribution", async (req, res) => {
+  try {
+    const { state } = req.query;
+
+    if (state) {
+      // Return district-level data for the specified state
+      const data = await RFQ.aggregate([
+        { $match: { dropLocationState: state } },
+        {
+          $group: {
+            _id: "$dropLocationDistrict",
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            district: "$_id",
+            count: 1,
+            _id: 0,
+          },
+        },
+      ]);
+      res.status(200).json(data);
+    } else {
+      // Return state-level data
+      const data = await RFQ.aggregate([
+        {
+          $group: {
+            _id: "$dropLocationState",
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            state: "$_id",
+            count: 1,
+            _id: 0,
+          },
+        },
+      ]);
+      res.status(200).json(data);
+    }
+  } catch (error) {
+    console.error("Error fetching geographical distribution data:", error);
+    res.status(500).json({ error: "Failed to fetch data" });
+  }
+});
+
+//const locationCoordinates = require('./locationCoordinates.js');
+
+//app.get('/api/md/geographical-distribution', async (req, res) => {
+//try {
+//const data = await RFQ.aggregate([
+//{
+//$group: {
+//_id: {
+//origin: '$originLocation',
+//destination: '$dropLocationDistrict',
+//},
+//count: { $sum: 1 },
+//},
+//},
+//{
+//$project: {
+//origin: '$_id.origin',
+//destination: '$_id.destination',
+//count: 1,
+//_id: 0,
+//},
+//    },
+//    ]);
+
+//const dataWithCoordinates = data.map(item => {
+//    const originCoords = locationCoordinates[item.origin];
+//      const destCoords = locationCoordinates[item.destination];
+
+//if (!originCoords || !destCoords) {
+//    console.warn(`Coordinates not found for locations: ${item.origin} or ${item.destination}`);
+//      return null;
+//      }
+
+//return {
+//origin: item.origin,
+//destination: item.destination,
+//count: item.count,
+//originLatitude: originCoords.latitude,
+//originLongitude: originCoords.longitude,
+//  destinationLatitude: destCoords.latitude,
+//    destinationLongitude: destCoords.longitude,
+//    };
+//    }).filter(item => item !== null);
+
+// res.status(200).json(dataWithCoordinates);
+// } catch (error) {
+//console.error('Error fetching geographical distribution data:', error);
+// res.status(500).json({ error: 'Failed to fetch data' });
+// }
+//});
+
 // Endpoint to handle contact form submissions
 app.post("/api/contact", async (req, res) => {
   const { name, contactNumber, companyName, message } = req.body;
@@ -2295,6 +2961,234 @@ app.post("/api/send-reminder", async (req, res) => {
   } catch (error) {
     console.error("Error in send-reminder endpoint:", error);
     res.status(500).json({ message: "Failed to send participation reminder." });
+  }
+});
+
+app.get("/api/md/savings-achieved", async (req, res) => {
+  try {
+    const rfqs = await RFQ.find();
+
+    const data = rfqs.map((rfq) => {
+      const budgetedCost = rfq.budgetedPriceBySalesDept * rfq.numberOfVehicles;
+      const actualCost = rfq.l1Price ? rfq.l1Price * rfq.numberOfVehicles : 0;
+      const savings = budgetedCost - actualCost;
+
+      return {
+        date: rfq.createdAt.toISOString(),
+        savings: savings > 0 ? savings : 0,
+      };
+    });
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error fetching savings achieved data:", error);
+    res.status(500).json({ error: "Failed to fetch data" });
+  }
+});
+
+// Transportation Costs Endpoint
+app.get("/api/md/transportation-costs", async (req, res) => {
+  try {
+    const rfqs = await RFQ.find();
+
+    const data = rfqs.map((rfq) => {
+      const totalBudgetedCost =
+        rfq.budgetedPriceBySalesDept * rfq.numberOfVehicles;
+      const totalActualCost = rfq.l1Price
+        ? rfq.l1Price * rfq.numberOfVehicles
+        : 0;
+
+      return {
+        date: rfq.createdAt,
+        budgetedCost: totalBudgetedCost,
+        actualCost: totalActualCost,
+      };
+    });
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error fetching transportation costs:", error);
+    res.status(500).json({ error: "Failed to fetch data" });
+  }
+});
+
+app.get("/api/md/vendor-participation", async (req, res) => {
+  try {
+    const { vendorName } = req.query;
+
+    let data = [];
+
+    if (vendorName && vendorName !== "all") {
+      // Step 1: Find all RFQs where the vendor was invited
+      const invitedRFQs = await RFQ.find({ selectedVendors: vendorName });
+      const totalInvited = invitedRFQs.length;
+
+      // Step 2: Check how many of those RFQs have quotes from this vendor
+      const invitedRFQIds = invitedRFQs.map((rfq) => rfq._id);
+      const totalParticipated = await Quote.countDocuments({
+        rfqId: { $in: invitedRFQIds },
+        vendorName: vendorName,
+      });
+
+      // If no invited RFQs, ensure we respond appropriately
+      if (totalInvited === 0) {
+        data = [
+          { status: "Participated", count: 0 },
+          { status: "Not Participated", count: 0 },
+        ];
+      } else {
+        data = [
+          { status: "Participated", count: totalParticipated },
+          {
+            status: "Not Participated",
+            count: Math.max(totalInvited - totalParticipated, 0),
+          },
+        ];
+      }
+    } else {
+      // Cumulative participation data for all vendors
+      const totalInvitedResult = await RFQ.aggregate([
+        { $unwind: "$selectedVendors" },
+        { $group: { _id: null, count: { $sum: 1 } } },
+      ]);
+
+      const totalInvited = totalInvitedResult[0]
+        ? totalInvitedResult[0].count
+        : 0;
+
+      // Count distinct vendors that submitted quotes
+      const totalParticipated = await Quote.distinct(
+        "vendorName"
+      ).countDocuments();
+
+      data = [
+        { status: "Participated", count: totalParticipated },
+        {
+          status: "Not Participated",
+          count: Math.max(totalInvited - totalParticipated, 0),
+        },
+      ];
+    }
+
+    console.log("Vendor Participation Data:", data); // Debugging line
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error fetching vendor participation data:", error);
+    res.status(500).json({ error: "Failed to fetch data" });
+  }
+});
+
+app.get("/api/md/vendors", async (req, res) => {
+  try {
+    const vendors = await Quote.distinct("vendorName");
+    res.status(200).json(vendors);
+  } catch (error) {
+    console.error("Error fetching vendor list:", error);
+    res.status(500).json({ error: "Failed to fetch vendors" });
+  }
+});
+
+// Add this endpoint to handle individual LR number submissions
+app.post("/api/vendor/rfq/:rfqId/submit-lr-number", async (req, res) => {
+  try {
+    const { rfqId } = req.params;
+    const { username: vendorName, index, lrNumber } = req.body;
+
+    // Validate index and lrNumber
+    if (
+      index === undefined ||
+      lrNumber === undefined ||
+      lrNumber.trim() === ""
+    ) {
+      return res.status(400).json({ error: "Invalid index or LR Number." });
+    }
+
+    // Fetch the vendor's quote
+    const vendorQuote = await Quote.findOne({
+      rfqId,
+      vendorName,
+    });
+
+    if (!vendorQuote || vendorQuote.trucksAllotted <= 0) {
+      return res.status(400).json({
+        error: "No trucks allotted to this vendor for this RFQ.",
+      });
+    }
+
+    // Fetch or create the LRNumber entry
+    let lrNumberEntry = await LRNumber.findOne({
+      rfqId,
+      vendorName,
+    });
+
+    if (!lrNumberEntry) {
+      lrNumberEntry = new LRNumber({
+        rfqId,
+        vendorName,
+        lrNumbers: Array(vendorQuote.trucksAllotted).fill(""),
+      });
+    }
+
+    // Update the specific LR number at the given index
+    lrNumberEntry.lrNumbers[index] = lrNumber;
+    await lrNumberEntry.save();
+
+    res.status(200).json({ message: "LR Number submitted successfully." });
+  } catch (error) {
+    console.error("Error submitting LR Number:", error);
+    res.status(500).json({ error: "Failed to submit LR Number." });
+  }
+});
+
+// api endpoint for key metrics
+app.get("/api/md/key-metrics", async (req, res) => {
+  try {
+    const totalRFQs = await RFQ.countDocuments();
+    const totalSavingsData = await RFQ.aggregate([
+      {
+        $project: {
+          savings: {
+            $subtract: [
+              { $multiply: ["$budgetedPriceBySalesDept", "$numberOfVehicles"] },
+              { $multiply: ["$l1Price", "$numberOfVehicles"] },
+            ],
+          },
+        },
+      },
+      { $group: { _id: null, totalSavings: { $sum: "$savings" } } },
+    ]);
+
+    const totalSavings = totalSavingsData[0]
+      ? totalSavingsData[0].totalSavings
+      : 0;
+
+    const totalCostData = await RFQ.aggregate([
+      { $match: { l1Price: { $exists: true } } },
+      {
+        $group: {
+          _id: null,
+          totalCost: { $sum: { $multiply: ["$l1Price", "$numberOfVehicles"] } },
+          totalShipments: { $sum: "$numberOfVehicles" },
+        },
+      },
+    ]);
+
+    const totalCost = totalCostData[0] ? totalCostData[0].totalCost : 0;
+    const totalShipments = totalCostData[0]
+      ? totalCostData[0].totalShipments
+      : 0;
+    const averageCostPerShipment = totalShipments
+      ? totalCost / totalShipments
+      : 0;
+
+    res.status(200).json({
+      totalRFQs,
+      totalSavings,
+      averageCostPerShipment,
+    });
+  } catch (error) {
+    console.error("Error fetching key metrics:", error);
+    res.status(500).json({ error: "Failed to fetch key metrics" });
   }
 });
 
@@ -2461,8 +3355,240 @@ cron.schedule("* * * * *", updateRFQStatuses);
 //  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 //});
 
+app.get("/api/md/vehicle-type-details-split", async (req, res) => {
+  try {
+    // Step 1: Aggregate RFQs by vehicleType + additionalVehicleDetails
+    const aggregatedData = await RFQ.aggregate([
+      {
+        $group: {
+          _id: {
+            vehicleType: "$vehicleType",
+            additionalVehicleDetails: "$additionalVehicleDetails",
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Step 2: Calculate the total count of all RFQs in this aggregation
+    const totalRFQs = aggregatedData.reduce((acc, item) => acc + item.count, 0);
+
+    // Step 3: Map the aggregated data to an array with vehicleType, additionalVehicleDetails, count, and percentage
+    const result = aggregatedData.map((item) => {
+      const { vehicleType, additionalVehicleDetails } = item._id;
+      return {
+        vehicleType: vehicleType || "Unknown",
+        additionalVehicleDetails: additionalVehicleDetails || "N/A",
+        count: item.count,
+        percentage: totalRFQs
+          ? ((item.count / totalRFQs) * 100).toFixed(2)
+          : "0.00",
+      };
+    });
+
+    // Step 4: Return the result
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching vehicle type + details split:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch vehicle type + details split" });
+  }
+});
+
+app.get("/api/md/geographical-distribution-by-district", async (req, res) => {
+  try {
+    // Step 1: Aggregate RFQs by dropLocationState and dropLocationDistrict
+    const aggregatedData = await RFQ.aggregate([
+      {
+        $group: {
+          _id: {
+            state: "$dropLocationState",
+            district: "$dropLocationDistrict",
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          state: "$_id.state",
+          district: "$_id.district",
+          count: 1,
+          _id: 0,
+        },
+      },
+    ]);
+
+    // Step 2: Group the aggregated results by state for a cleaner nested structure
+    // e.g. { state: 'X', districts: [{ district: 'Y', count: n }, ... ] }
+    const groupedByState = {};
+    aggregatedData.forEach((item) => {
+      const { state, district, count } = item;
+      if (!groupedByState[state]) {
+        groupedByState[state] = [];
+      }
+      groupedByState[state].push({ district, count });
+    });
+
+    // Step 3: Transform the object into an array if you prefer array-based response
+    // Each element will have the shape:
+    // {
+    //   state: "XYZ",
+    //   districts: [
+    //     { district: "ABC", count: 10 },
+    //     { district: "DEF", count: 7 },
+    //   ]
+    // }
+    const result = Object.entries(groupedByState).map(([state, districts]) => ({
+      state,
+      districts,
+    }));
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error(
+      "Error fetching state-district geographical distribution:",
+      error
+    );
+    res.status(500).json({
+      error: "Failed to fetch state-district geographical distribution",
+    });
+  }
+});
+
+app.get("/api/md/monthly-vehicles", async (req, res) => {
+  try {
+    // 1) Only match documents that have a valid numberOfVehicles.
+    //    If you want to ignore documents with 0 vehicles, do { $gt: 0 }
+    const aggregatedData = await RFQ.aggregate([
+      {
+        $match: {
+          numberOfVehicles: { $exists: true, $gte: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+          },
+          totalVehicles: { $sum: "$numberOfVehicles" },
+        },
+      },
+      {
+        $sort: {
+          "_id.year": 1,
+          "_id.month": 1,
+        },
+      },
+    ]);
+
+    // DEBUG: Log the raw aggregatedData to see if there's anything.
+    console.log("aggregatedData =>", aggregatedData);
+
+    // 2) Map the data into { month: 'Jan 2024', vehicles: 123 }
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    const results = aggregatedData.map((item) => {
+      const { month, year } = item._id;
+      const monthString = `${monthNames[month - 1]} ${year}`;
+      return {
+        month: monthString,
+        vehicles: item.totalVehicles,
+      };
+    });
+
+    // DEBUG: Log the final results
+    console.log("final monthOverMonth results =>", results);
+
+    res.status(200).json(results);
+  } catch (error) {
+    console.error("Error fetching month-over-month vehicles data:", error);
+    res.status(500).json({ error: "Failed to fetch month-over-month data" });
+  }
+});
+
+app.post("/api/fastag-tracking", async (req, res) => {
+  try {
+    const { vehiclenumber } = req.body;
+
+    // 1) First, get a fresh token from Masters India Auth API:
+    const authPayload = {
+      username: "aarnav.singh@premierenergies.com", // Provided user ID
+      password: "Masters@4321", // Provided password
+    };
+
+    const authResponse = await axios.post(
+      "https://api-platform.mastersindia.co/api/v2/token-auth/",
+      authPayload,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+
+    // The auth API typically returns { token: "<JWT>" } on success
+    const token = authResponse.data.token;
+    if (!token) {
+      return res
+        .status(500)
+        .json({ error: "No token returned from Masters India Auth" });
+    }
+
+    // 2) Now call the FASTAG API using the fresh token:
+    const config = {
+      headers: {
+        Authorization: `JWT ${token}`, // use the dynamic token from auth
+        Productid: "arap",
+        Subid: "226958", // Provided subid
+        Mode: "Buyer",
+        "Content-Type": "application/json",
+      },
+    };
+
+    const apiBody = {
+      vehiclenumber, // e.g. "HR55AL1020"
+    };
+
+    const fastagResponse = await axios.post(
+      "https://api-platform.mastersindia.co/api/v2/sbt/FASTAG/",
+      apiBody,
+      config
+    );
+
+    // Send Masters India’s FASTAG data back to the frontend
+    return res.status(200).json(fastagResponse.data);
+  } catch (error) {
+    console.error("Error calling FASTAG API:", error);
+
+    // Return more specific errors if available
+    if (error.response) {
+      return res
+        .status(error.response.status)
+        .json({ error: error.response.data || "Masters India error" });
+    } else if (error.request) {
+      return res.status(500).json({ error: "No response from Masters India" });
+    }
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 7707;
 
 server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

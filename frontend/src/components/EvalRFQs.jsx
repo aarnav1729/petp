@@ -63,6 +63,7 @@ const EvalRFQs = ({ userRole }) => {
           companyName: matchingVendor
             ? matchingVendor.companyName || quote.vendorName
             : quote.vendorName,
+          grade: matchingVendor ? matchingVendor.grade : "A",
         };
       });
       setEnrichedQuotes(enriched);
@@ -76,7 +77,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}`
+        `http://localhost:7707/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
       setRfqStatus(response.data.status);
@@ -88,7 +89,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchQuotes = async () => {
     try {
       const response = await axios.get(
-        `https://leaf-tn20.onrender.com/api/quotes/${rfqId}`
+        `http://localhost:7707/api/quotes/${rfqId}`
       );
       setQuotes(response.data);
     } catch (error) {
@@ -99,7 +100,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchVendors = async () => {
     try {
       const response = await axios.get(
-        "https://leaf-tn20.onrender.com/api/vendors"
+        "http://localhost:7707/api/vendors"
       );
       setVendors(response.data);
     } catch (error) {
@@ -116,11 +117,40 @@ const EvalRFQs = ({ userRole }) => {
   };
 
   // Assign LEAF Allocation
+  // Inside EvalRFQs.jsx
+
   const assignLeafAllocation = (quotes, requiredTrucks) => {
     if (!requiredTrucks || requiredTrucks <= 0) return quotes;
 
-    // Sort quotes by price (ascending)
-    const sortedQuotes = [...quotes].sort((a, b) => a.price - b.price);
+    // Define grade to score mapping
+    const gradeScores = {
+      A: 4,
+      B: 3,
+      C: 2,
+      D: 1,
+    };
+
+    // Calculate max price for normalization
+    const maxPrice = Math.max(...quotes.map((q) => q.price));
+
+    // Enrich quotes with weighted score
+    const quotesWithScores = quotes.map((quote) => {
+      const priceScore = maxPrice / quote.price; // Invert price for scoring
+      const gradeScore = gradeScores[quote.grade] || 4; // Default to 4 if undefined
+      const weightedScore = priceScore * 0.6 + gradeScore * 0.4;
+      return {
+        ...quote,
+        priceScore,
+        gradeScore,
+        weightedScore,
+      };
+    });
+
+    // Sort quotes by weighted score (descending)
+    const sortedQuotes = quotesWithScores.sort(
+      (a, b) => b.weightedScore - a.weightedScore
+    );
+
     let totalTrucks = 0;
 
     return sortedQuotes.map((quote, index) => {
@@ -151,6 +181,7 @@ const EvalRFQs = ({ userRole }) => {
       price: alloc.price,
       trucksAllotted: alloc.trucksAllotted,
       label: `L${index + 1}`,
+      numberOfVehiclesPerDay: alloc.numberOfVehiclesPerDay,
     }));
   };
 
@@ -207,7 +238,7 @@ const EvalRFQs = ({ userRole }) => {
 
     try {
       const response = await axios.post(
-        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}/finalize-allocation`,
+        `http://localhost:7707/api/rfq/${rfqId}/finalize-allocation`,
         {
           logisticsAllocation,
           finalizeReason: isIdentical ? "" : finalizeReason,
@@ -255,10 +286,16 @@ const EvalRFQs = ({ userRole }) => {
                 <thead className="bg-green-600 rounded-lg">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                      Vendor Name
+                      Transporter
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Grade
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Trucks Offered
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Vehicle Mobilisation Capacity
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Quote
@@ -283,9 +320,14 @@ const EvalRFQs = ({ userRole }) => {
                       >
                         {quote.companyName || quote.vendorName}
                       </td>
-
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {quote.grade}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {quote.numberOfTrucks}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {quote.numberOfVehiclesPerDay}
                       </td>
                       <td
                         className={`px-6 py-4 whitespace-nowrap text-sm ${
@@ -323,19 +365,22 @@ const EvalRFQs = ({ userRole }) => {
                 <thead className="bg-blue-600 rounded-lg">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                      Company Name
+                      Transporter
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Trucks Offered
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                      Price
+                      Vehicle Mobilisation Capacity
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
-                      Trucks Allotted
+                      Quote
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                       Label
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
+                      Trucks Allotted
                     </th>
                   </tr>
                 </thead>
@@ -349,12 +394,18 @@ const EvalRFQs = ({ userRole }) => {
                             : "filter blur-sm text-gray-500"
                         }`}
                       >
-                        {alloc.vendorName}
+
+                        {alloc.companyName || alloc.vendorName}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {alloc.trucksOffered}
                       </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {alloc.numberOfVehiclesPerDay}
+                      </td>
+
                       <td
                         className={`px-6 py-4 whitespace-nowrap text-sm ${
                           evaluationPeriodEnded
@@ -377,6 +428,10 @@ const EvalRFQs = ({ userRole }) => {
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {alloc.label}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         <input
                           type="number"
                           value={alloc.trucksAllotted}
@@ -389,9 +444,6 @@ const EvalRFQs = ({ userRole }) => {
                           }
                           className="p-1 border"
                         />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        {alloc.label}
                       </td>
                     </tr>
                   ))}
@@ -434,12 +486,15 @@ const EvalRFQs = ({ userRole }) => {
                         <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                           Vendor Name
                         </th>
+
                         <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                           Price
                         </th>
+
                         <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                           Trucks Allotted
                         </th>
+
                         <th className="px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">
                           Label
                         </th>
@@ -459,6 +514,7 @@ const EvalRFQs = ({ userRole }) => {
                             >
                               {alloc.vendorName}
                             </td>
+
                             <td
                               className={`px-6 py-4 whitespace-nowrap text-sm ${
                                 evaluationPeriodEnded
@@ -472,6 +528,7 @@ const EvalRFQs = ({ userRole }) => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                               {alloc.trucksAllotted}
                             </td>
+                            
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                               {alloc.label}
                             </td>

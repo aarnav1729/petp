@@ -17,13 +17,17 @@ import AuctionRoom from "./components/AuctionRoom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import PendingRFQs from "./components/PendingRFQs";
+import LRNumberSubmission from "./components/LRNumberSubmission";
 import Registering from "./components/Registering";
 import Accounts from "./components/Accounts";
 import FactoryRFQList from "./components/FactoryRFQList";
 import EvalRFQs from "./components/EvalRFQs";
-import TC from "./components/TC"; 
+import TC from "./components/TC";
 import Contact from "./components/Contact";
-
+import MDView from "./components/MDView";
+import TFR from "./components/TFR";
+import SalesRFQList from "./components/SalesRFQList";
+import FastagTracking from "./components/FastagTracking";
 
 const App = () => {
   const [role, setRole] = useState(null);
@@ -64,6 +68,8 @@ const App = () => {
                           ? "/rfq-list"
                           : role === "factory"
                           ? "/factory-rfq-list"
+                          : role === "sales"
+                          ? "/sales-rfq-list"
                           : "/vendor-rfq-list"
                       }
                     />
@@ -79,6 +85,10 @@ const App = () => {
                       element={<ActiveAuctions />}
                     />
                     <Route
+                      path="/fastag-tracking"
+                      element={<FastagTracking />}
+                    />
+                    <Route
                       path="/auction-room/:rfqId"
                       element={<AuctionRoom username={username} role={role} />}
                     />
@@ -86,6 +96,7 @@ const App = () => {
                       path="/rfq/:rfqId"
                       element={<RFQDetailsPage userRole={role} />}
                     />
+                    <Route path="/mdview" element={<MDView />} />
                     <Route path="/accounts" element={<Accounts />} />
                   </>
                 )}
@@ -104,6 +115,10 @@ const App = () => {
                       path="/pending-rfqs"
                       element={<PendingRFQs username={username} />}
                     />
+                    <Route
+                      path="/vendor/rfq/:rfqId/lr-numbers"
+                      element={<LRNumberSubmission username={username} />}
+                    />
                   </>
                 )}
 
@@ -118,6 +133,13 @@ const App = () => {
                       path="/eval-rfq/:rfqId"
                       element={<EvalRFQs userRole={role} />}
                     />
+                    <Route path="/tfr" element={<TFR />} />
+                  </>
+                )}
+
+                {role === "sales" && (
+                  <>
+                    <Route path="/sales-rfq-list" element={<SalesRFQList />} />
                   </>
                 )}
                 <Route path="*" element={<Navigate to="/" />} />
@@ -130,6 +152,5 @@ const App = () => {
     </Router>
   );
 };
-
 
 export default App;
