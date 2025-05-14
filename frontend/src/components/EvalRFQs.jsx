@@ -77,7 +77,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:7707/api/rfq/${rfqId}`
+        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
       setRfqStatus(response.data.status);
@@ -89,7 +89,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchQuotes = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:7707/api/quotes/${rfqId}`
+        `https://leaf-tn20.onrender.com/api/quotes/${rfqId}`
       );
       setQuotes(response.data);
     } catch (error) {
