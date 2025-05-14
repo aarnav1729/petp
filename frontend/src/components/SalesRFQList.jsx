@@ -1,7 +1,6 @@
 // SalesOrders.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import NewRFQForm from "./NewRFQForm";
 
 const SalesOrders = () => {
   const [salesOrders, setSalesOrders] = useState([]);
@@ -229,8 +228,6 @@ const SalesOrders = () => {
           </div>
         </div>
       )}
-      {/* Pass overrideFlag to NewRFQForm only when the modal is open */}
-      {modalOpen && <NewRFQForm overrideFlag={overrideFlag} />}
     </div>
   );
 };
