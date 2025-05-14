@@ -793,7 +793,7 @@ const NewRFQForm = ({ overrideFlag }) => {
     try {
       setIsLoading(true);
       const response = await axios.get(
-        "http://localhost:7707/api/next-rfq-number"
+        "https://leaf-tn20.onrender.com/api/next-rfq-number"
       );
       setFormData((prevData) => ({
         ...prevData,
@@ -810,7 +810,7 @@ const NewRFQForm = ({ overrideFlag }) => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("http://localhost:7707/api/vendors");
+      const response = await axios.get("https://leaf-tn20.onrender.com/api/vendors");
       setVendors(response.data);
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -828,7 +828,7 @@ const NewRFQForm = ({ overrideFlag }) => {
   const fetchSalesOrders = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:7707/api/sales/orders"
+        "https://leaf-tn20.onrender.com/api/sales/orders"
       );
       setSalesOrders(response.data);
     } catch (error) {
@@ -966,7 +966,7 @@ const NewRFQForm = ({ overrideFlag }) => {
         try {
           // Call the API to check remaining MW
           const salesOrderRes = await axios.get(
-            `http://localhost:7707/api/sales/orders/${formData.projectCode}/remaining-mw?override=${formData.overrideFlag}`
+            `https://leaf-tn20.onrender.com/api/sales/orders/${formData.projectCode}/remaining-mw?override=${formData.overrideFlag}`
           );
           const remainingMW = Number(salesOrderRes.data.remainingMW);
           const rfqMW = Number(formData.mw);
@@ -1009,7 +1009,7 @@ const NewRFQForm = ({ overrideFlag }) => {
       delete dataToSend.customVehicleType;
   
       const response = await axios.post(
-        "http://localhost:7707/api/rfq",
+        "https://leaf-tn20.onrender.com/api/rfq",
         dataToSend
       );
   

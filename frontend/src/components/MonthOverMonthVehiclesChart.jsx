@@ -73,7 +73,7 @@ const MonthOverMonthVehiclesChart = () => {
 
     // Fetch data
     axios
-      .get("http://localhost:5000/api/md/monthly-vehicles")
+      .get("https://leaf-tn20.onrender.com/api/md/monthly-vehicles")
       .then((response) => {
         // response.data should be an array of objects, e.g.:
         // [ { month: 'Jan 2024', vehicles: 30 }, { month: 'Feb 2024', vehicles: 12 } ... ]

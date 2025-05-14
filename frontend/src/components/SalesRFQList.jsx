@@ -26,7 +26,7 @@ const SalesOrders = () => {
   const fetchSalesOrders = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:7707/api/sales/orders"
+        "https://leaf-tn20.onrender.com/api/sales/orders"
       );
       setSalesOrders(response.data);
     } catch (error) {
@@ -42,7 +42,7 @@ const SalesOrders = () => {
 
       // Update the override flag value
       await axios.patch(
-        `http://localhost:7707/api/sales/orders/${projectCode}/override`,
+        `https://leaf-tn20.onrender.com/api/sales/orders/${projectCode}/override`,
         { canOverride: newOverrideValue }
       );
 
@@ -78,7 +78,7 @@ const SalesOrders = () => {
     try {
       // Compute projectCode by concatenating customerName, projectCapacity, and siteLocation
       const projectCode = `${formData.customerName}-${formData.projectCapacity}-${formData.siteLocation}`;
-      await axios.post("http://localhost:7707/api/sales/orders", {
+      await axios.post("https://leaf-tn20.onrender.com/api/sales/orders", {
         customerName: formData.customerName,
         projectCapacity: parseFloat(formData.projectCapacity),
         siteLocation: formData.siteLocation,

@@ -12,7 +12,7 @@ const SavingsAchievedChart = () => {
     let chart = am4core.create('savingsAchievedChartDiv', am4charts.XYChart);
     chartRef.current = chart;
 
-    axios.get('http://localhost:5000/api/md/savings-achieved')
+    axios.get('https://leaf-tn20.onrender.com/api/md/savings-achieved')
       .then(response => {
         console.log('Savings Achieved Data:', response.data);
 

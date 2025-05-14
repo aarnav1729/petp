@@ -113,7 +113,7 @@ const QuotesChart = () => {
 
     // Fetch data from API
     axios
-      .get('http://localhost:5000/api/quotes')
+      .get('https://leaf-tn20.onrender.com/api/quotes')
       .then((response) => {
         // Map data to required format
         const quotesData = response.data.map((quote) => ({

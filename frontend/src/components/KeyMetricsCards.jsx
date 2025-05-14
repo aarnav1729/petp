@@ -11,7 +11,7 @@ const KeyMetricsCards = () => {
   });
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/md/key-metrics')
+    axios.get('https://leaf-tn20.onrender.com/api/md/key-metrics')
       .then(response => {
         setMetrics(response.data);
       })

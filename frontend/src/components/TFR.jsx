@@ -14,14 +14,14 @@ const TFR = () => {
       try {
         // Fetch all closed RFQs
         const rfqResponse = await axios.get(
-          "http://localhost:5000/api/tfr/rfqs"
+          "https://leaf-tn20.onrender.com/api/tfr/rfqs"
         );
         const rfqs = rfqResponse.data;
 
         // For each RFQ, fetch vendors and their quotes
         const rfqDataPromises = rfqs.map(async (rfq) => {
           const vendorsResponse = await axios.get(
-            `http://localhost:5000/api/tfr/rfqs/${rfq._id}/vendors`
+            `https://leaf-tn20.onrender.com/api/tfr/rfqs/${rfq._id}/vendors`
           );
           return {
             ...rfq,
@@ -54,7 +54,7 @@ const TFR = () => {
     const fetchCumulativeTFR = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:5000/api/tfr/vendors/cumulative"
+          "https://leaf-tn20.onrender.com/api/tfr/vendors/cumulative"
         );
         setCumulativeTFR(response.data);
       } catch (error) {
@@ -82,7 +82,7 @@ const TFR = () => {
         }));
 
         await axios.post(
-          `http://localhost:5000/api/tfr/rfqs/${rfq._id}/update-trucks`,
+          `https://leaf-tn20.onrender.com/api/tfr/rfqs/${rfq._id}/update-trucks`,
           { trucksData: trucksDataArray }
         );
       });
@@ -91,7 +91,7 @@ const TFR = () => {
 
       // Refresh cumulative TFR data
       const cumulativeResponse = await axios.get(
-        "http://localhost:5000/api/tfr/vendors/cumulative"
+        "https://leaf-tn20.onrender.com/api/tfr/vendors/cumulative"
       );
       setCumulativeTFR(cumulativeResponse.data);
 

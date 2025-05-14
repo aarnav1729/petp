@@ -21,7 +21,7 @@ const SalesOrders = () => {
 
   const fetchSalesOrders = async () => {
     try {
-      const response = await axios.get('http://localhost:7707/api/sales/orders');
+      const response = await axios.get('https://leaf-tn20.onrender.com/api/sales/orders');
       setSalesOrders(response.data);
     } catch (error) {
       console.error('Error fetching sales orders:', error);
@@ -31,7 +31,7 @@ const SalesOrders = () => {
   const handleToggle = async (projectCode, canOverride) => {
     try {
       await axios.patch(
-        `http://localhost:7707/api/sales/orders/${projectCode}/override`,
+        `https://leaf-tn20.onrender.com/api/sales/orders/${projectCode}/override`,
         { canOverride: !canOverride }
       );
       fetchSalesOrders(); // Refresh sales orders after toggle
@@ -63,7 +63,7 @@ const SalesOrders = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post('http://localhost:7707/api/sales/orders', {
+      await axios.post('https://leaf-tn20.onrender.com/api/sales/orders', {
         orderNumber: formData.orderNumber,
         quantity: parseFloat(formData.quantity),
         customerName: formData.customerName,

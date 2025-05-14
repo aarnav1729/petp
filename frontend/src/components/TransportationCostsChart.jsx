@@ -18,7 +18,7 @@ const TransportationCostsChart = () => {
     chartRef.current = chart;
 
     // Fetch data from API
-    axios.get('http://localhost:5000/api/md/transportation-costs')
+    axios.get('https://leaf-tn20.onrender.com/api/md/transportation-costs')
       .then(response => {
         console.log('Transportation Costs Data:', response.data); // Debugging line
 

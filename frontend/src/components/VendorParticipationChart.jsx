@@ -13,7 +13,7 @@ const VendorParticipationChart = () => {
 
   // Fetch all vendors for the filter dropdown
   useEffect(() => {
-    axios.get('http://localhost:5000/api/md/vendors')
+    axios.get('https://leaf-tn20.onrender.com/api/md/vendors')
       .then(response => {
         setVendors(response.data);
       })
@@ -33,7 +33,7 @@ const VendorParticipationChart = () => {
 
     // Function to load data based on selected vendor
     const loadChartData = () => {
-      let url = 'http://localhost:5000/api/md/vendor-participation';
+      let url = 'https://leaf-tn20.onrender.com/api/md/vendor-participation';
       if (selectedVendor !== 'all') {
         url += `?vendorName=${selectedVendor}`;
       }

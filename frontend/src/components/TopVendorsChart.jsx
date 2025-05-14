@@ -12,7 +12,7 @@ const TopVendorsChart = () => {
     let chart = am4core.create('topVendorsChartDiv', am4charts.XYChart);
     chartRef.current = chart;
 
-    axios.get('http://localhost:5000/api/md/top-vendors')
+    axios.get('https://leaf-tn20.onrender.com/api/md/top-vendors')
       .then(response => {
         console.log('Top Vendors Data:', response.data);
 

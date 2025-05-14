@@ -32,7 +32,7 @@ const VehicleTypeSplitChart = () => {
 
     // Fetch data from the backend endpoint
     axios
-      .get("http://localhost:5000/api/md/vehicle-type-details-split")
+      .get("https://leaf-tn20.onrender.com/api/md/vehicle-type-details-split")
       .then((response) => {
         // The backend returns an array of objects, e.g.:
         // [
