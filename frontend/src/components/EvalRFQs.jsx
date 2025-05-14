@@ -100,7 +100,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchVendors = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:7707/api/vendors"
+        "https://leaf-tn20.onrender.com/api/vendors"
       );
       setVendors(response.data);
     } catch (error) {
@@ -238,7 +238,7 @@ const EvalRFQs = ({ userRole }) => {
 
     try {
       const response = await axios.post(
-        `http://localhost:7707/api/rfq/${rfqId}/finalize-allocation`,
+        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}/finalize-allocation`,
         {
           logisticsAllocation,
           finalizeReason: isIdentical ? "" : finalizeReason,
