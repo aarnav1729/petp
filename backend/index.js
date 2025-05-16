@@ -2248,9 +2248,9 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
             `,
               },
               toRecipients: [
-                {
-                  emailAddress: { address: "aarnav.singh@premierenergies.com" },
-                },
+                { emailAddress: { address: "aarnav.singh@premierenergies.com" } },
+                { emailAddress: { address: "saluja@premierenergies.com" } },
+                { emailAddress: { address: "nk.khandelwal@premierenergies.com" } },
               ],
               from: { emailAddress: { address: SENDER_EMAIL } },
             },
