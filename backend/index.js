@@ -2218,7 +2218,7 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
       if (salesOrder) {
         // Use the new budgetedPrice field from SalesOrder
         const budgetedCost = Number(salesOrder.budgetedPrice);
-        const pricePerMW = ((totalLogisticsPriceCalculated / mwValue)/1000000);
+        const pricePerMW = totalLogisticsPriceCalculated / mwValue / 1000000;
         console.log(
           "Sales Alert Calculation: pricePerMW =",
           pricePerMW,
@@ -2239,20 +2239,40 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
               body: {
                 contentType: "HTML",
                 content: `
-              <p>The final price in INR/Wp for ${
-                rfq.RFQNumber
-              } is ${pricePerMW.toFixed(
+                  <p>The final price in INR/Wp for <strong>${
+                    rfq.RFQNumber
+                  }</strong> is <strong>${pricePerMW.toFixed(
                   2
-                )}, which exceeds the budgeted cost of ${budgetedCost}.</p>
-              <p>Please review the RFQ allocation details.</p>
-            `,
+                )}</strong>, which exceeds the budgeted cost of <strong>${budgetedCost}</strong>.</p>
+                  <p><strong>Customer Name:</strong> ${
+                    salesOrder.customerName
+                  }</p>
+                  <p><strong>Number of Vehicles:</strong> ${
+                    rfq.numberOfVehicles
+                  }</p>
+                  <p>Please review the RFQ allocation details.</p>
+                `,
               },
               toRecipients: [
-                { emailAddress: { address: "aarnav.singh@premierenergies.com" } },
+                {
+                  emailAddress: { address: "aarnav.singh@premierenergies.com" },
+                },
                 { emailAddress: { address: "saluja@premierenergies.com" } },
-                { emailAddress: { address: "nk.khandelwal@premierenergies.com" } },
-                { emailAddress: { address: "saumya.ranjan@premierenergies.com" } },
-                { emailAddress: { address: "kushagra.srivastava@premierenergies.com" } },
+                {
+                  emailAddress: {
+                    address: "nk.khandelwal@premierenergies.com",
+                  },
+                },
+                {
+                  emailAddress: {
+                    address: "saumya.ranjan@premierenergies.com",
+                  },
+                },
+                {
+                  emailAddress: {
+                    address: "kushagra.srivastava@premierenergies.com",
+                  },
+                },
               ],
               from: { emailAddress: { address: SENDER_EMAIL } },
             },
@@ -2304,7 +2324,6 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
       const quote = await Quote.findOne({
         rfqId: id,
         vendorName: alloc.vendorName,
-        
       });
       if (quote) {
         quote.price = alloc.price;
@@ -2434,7 +2453,9 @@ app.get("/api/sales/orders/:projectCode/remaining-mw", async (req, res) => {
 
     // If override flag is true, skip the MW check
     if (override === "true") {
-      return res.status(200).json({ remainingMW: "Override enabled, skipping check." });
+      return res
+        .status(200)
+        .json({ remainingMW: "Override enabled, skipping check." });
     }
 
     // Find the sales order by projectCode
@@ -2454,7 +2475,6 @@ app.get("/api/sales/orders/:projectCode/remaining-mw", async (req, res) => {
     res.status(500).json({ error: "Failed to calculate remaining MW" });
   }
 });
-
 
 // Updated endpoint to create a new Sales Order using new fields
 app.post("/api/sales/orders", async (req, res) => {
@@ -2513,7 +2533,6 @@ app.patch("/api/sales/orders/:projectCode/override", async (req, res) => {
     res.status(500).json({ error: "Failed to update sales order" });
   }
 });
-
 
 // endpoint to update a quote's price and trucks allotted (for factory user)
 app.put("/api/quote/factory/:quoteId", async (req, res) => {
