@@ -12,6 +12,7 @@ const { Server } = require("socket.io");
 //const sql = require('mssql');
 const path = require("path");
 const axios = require("axios");
+const ExcelJS = require('exceljs');
 
 // outlook emails
 const { Client } = require("@microsoft/microsoft-graph-client");
@@ -3359,23 +3360,6 @@ cron.schedule("* * * * *", updateRFQStatuses);
 } */
 }
 
-// schedule the job to run every minute for testing
-//cron.schedule("*/720 * * * *", () => {
-//  console.log("Cron job execution triggered
-//  sendReminderEmails();
-//});
-
-// console.log("Cron job scheduled to run every minute
-
-// Serve static files from the React app
-//app.use(express.static(path.join(__dirname, 'dist')));
-
-// The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
-//app.get('*', (req, res) => {
-//  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-//});
-
 app.get("/api/md/vehicle-type-details-split", async (req, res) => {
   try {
     // Step 1: Aggregate RFQs by vehicleType + additionalVehicleDetails
@@ -3451,15 +3435,6 @@ app.get("/api/md/geographical-distribution-by-district", async (req, res) => {
       groupedByState[state].push({ district, count });
     });
 
-    // Step 3: Transform the object into an array if you prefer array-based response
-    // Each element will have the shape:
-    // {
-    //   state: "XYZ",
-    //   districts: [
-    //     { district: "ABC", count: 10 },
-    //     { district: "DEF", count: 7 },
-    //   ]
-    // }
     const result = Object.entries(groupedByState).map(([state, districts]) => ({
       state,
       districts,
@@ -3474,6 +3449,77 @@ app.get("/api/md/geographical-distribution-by-district", async (req, res) => {
     res.status(500).json({
       error: "Failed to fetch state-district geographical distribution",
     });
+  }
+});
+
+// ========================= RFQ SUMMARY EXCEL DOWNLOAD =========================
+// GET  /api   → auto-downloads Excel containing:
+// RFQNumber | Short Name | Company Type | Customer Name | Number of Vehicles
+// Selected Vendors (CSV) | Freight Cost
+// =============================================================================
+app.get('/api/work', async (req, res) => {
+  try {
+    // 1️⃣  Pull every RFQ and its selected vendors
+    const rfqs = await RFQ.find()
+      .populate('selectedVendors', 'vendorName')   // only need vendorName
+      .lean();
+
+    // 2️⃣  Build rows that include freight cost
+    const rows = await Promise.all(
+      rfqs.map(async (rfq) => {
+        // selected vendor names as CSV
+        const vendorCsv = (rfq.selectedVendors || [])
+          .map((v) => v.vendorName)
+          .join(', ');
+
+        // freight cost = Σ (price × trucksAllotted) across all quotes
+        const quotes = await Quote.find({ rfqId: rfq._id }).lean();
+        const freightCost = quotes.reduce(
+          (sum, q) => sum + (q.price || 0) * (q.trucksAllotted || 0),
+          0
+        );
+
+        return {
+          RFQNumber:          rfq.RFQNumber || '',
+          shortName:          rfq.shortName || '',
+          companyType:        rfq.companyType || '',
+          customerName:       rfq.customerName || '',
+          numberOfVehicles:   rfq.numberOfVehicles || 0,
+          selectedVendorsCsv: vendorCsv,
+          freightCost
+        };
+      })
+    );
+
+    // 3️⃣  Create workbook
+    const workbook = new ExcelJS.Workbook();
+    const sheet    = workbook.addWorksheet('RFQ Summary');
+    sheet.columns = [
+      { header: 'RFQ Number',          key: 'RFQNumber',          width: 15 },
+      { header: 'Short Name',          key: 'shortName',          width: 20 },
+      { header: 'Company Type',        key: 'companyType',        width: 20 },
+      { header: 'Customer Name',       key: 'customerName',       width: 25 },
+      { header: 'Number of Vehicles',  key: 'numberOfVehicles',   width: 18 },
+      { header: 'Selected Vendors',    key: 'selectedVendorsCsv', width: 40 },
+      { header: 'Freight Cost (₹)',    key: 'freightCost',        width: 18 }
+    ];
+    rows.forEach((r) => sheet.addRow(r));
+
+    // 4️⃣  Trigger download
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="rfq-summary.xlsx"'
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Error generating RFQ summary Excel:', err);
+    res.status(500).json({ error: 'Failed to generate RFQ summary Excel' });
   }
 });
 
@@ -3605,6 +3651,302 @@ app.post("/api/fastag-tracking", async (req, res) => {
       return res.status(500).json({ error: "No response from Masters India" });
     }
     return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+// GET /api/export.json  → returns JSON
+// GET /api/export.xlsx → prompts download of an Excel file
+app.get('/api/export.:format', async (req, res) => {
+  const { format } = req.params;
+  // 1) Fetch whatever data you need. Example: all SalesOrders
+  const data = await SalesOrder.find().lean();
+
+  if (format === 'json') {
+    // simply return JSON
+    return res.json(data);
+  }
+
+  if (format === 'xlsx') {
+    // generate Excel
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Export');
+
+    if (data.length) {
+      // define columns from object keys
+      sheet.columns = Object.keys(data[0]).map((key) => ({
+        header: key.charAt(0).toUpperCase() + key.slice(1),
+        key,
+        width: 20,
+      }));
+      // add rows
+      data.forEach((row) => sheet.addRow(row));
+    }
+
+    // set headers to trigger download
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="export.xlsx"'
+    );
+
+    // write workbook to the response stream
+    await workbook.xlsx.write(res);
+    return res.end();
+  }
+
+  // unsupported format
+  res.status(400).send('Invalid format. Use .json or .xlsx');
+});
+
+
+// ====================== Exclude List ======================
+const excludedRFQNumbers = [
+  'RFQ2','RFQ3','RFQ4','RFQ5','RFQ7','RFQ8','RFQ19','RFQ20','RFQ25','RFQ26',
+  'RFQ27','RFQ28','RFQ29','RFQ30','RFQ31','RFQ32','RFQ34','RFQ36','RFQ38','RFQ39',
+  'RFQ40','RFQ41','RFQ42','RFQ43','RFQ44','RFQ45','RFQ46','RFQ47','RFQ48','RFQ50',
+  'RFQ51','RFQ52','RFQ53','RFQ54','RFQ55','RFQ64','RFQ75','RFQ87','RFQ89','RFQ94',
+  'RFQ96','RFQ102','RFQ103','RFQ104','RFQ106','RFQ107','RFQ116','RFQ124','RFQ128',
+  'RFQ138','RFQ141','RFQ142','RFQ144','RFQ145','RFQ146','RFQ149','RFQ150','RFQ153',
+  'RFQ155','RFQ157','RFQ167','RFQ174','RFQ190','RFQ192','RFQ206','RFQ212','RFQ217',
+  'RFQ229','RFQ257','RFQ258','RFQ259','RFQ267','RFQ270','RFQ274','RFQ281','RFQ296',
+  'RFQ298','RFQ310','RFQ311','RFQ326','RFQ327','RFQ329','RFQ330','RFQ334','RFQ344',
+  'RFQ347','RFQ350','RFQ359','RFQ360','RFQ361','RFQ362','RFQ363','RFQ364','RFQ365',
+  'RFQ366','RFQ367','RFQ374','RFQ375','RFQ377','RFQ378','RFQ379','RFQ383','RFQ390',
+  'RFQ400','RFQ401','RFQ402','RFQ403','RFQ404','RFQ410','RFQ412','RFQ424','RFQ431',
+  'RFQ434','RFQ440','RFQ441','RFQ446','RFQ447','RFQ451','RFQ452','RFQ469','RFQ475',
+  'RFQ488','RFQ493','RFQ509','RFQ513','RFQ520','RFQ523','RFQ524','RFQ528','RFQ529',
+  'RFQ532','RFQ537','RFQ545','RFQ546','RFQ562','RFQ563','RFQ564','RFQ567','RFQ568',
+  'RFQ569','RFQ571','RFQ574','RFQ576','RFQ584','RFQ605','RFQ606','RFQ622','RFQ631',
+  'RFQ639'
+];
+
+// =================== Freight Costs Endpoint ===================
+// GET /api/freight-costs.json  → returns JSON
+// GET /api/freight-costs.xlsx → downloads an Excel file
+app.get('/api/freight-costs.:format', async (req, res) => {
+  try {
+    const { format } = req.params;
+
+    // 1) Fetch all RFQs except the excluded ones
+    const rfqs = await RFQ.find({
+      RFQNumber: { $nin: excludedRFQNumbers }
+    }).lean();
+
+    // 2) Compute rows
+    const rows = await Promise.all(rfqs.map(async (rfq) => {
+      const quotes = await Quote.find({ rfqId: rfq._id }).lean();
+      const freightCost = quotes.reduce(
+        (sum, q) => sum + (q.price || 0) * (q.trucksAllotted || 0),
+        0
+      );
+      const truckCount = quotes.reduce(
+        (sum, q) => sum + (q.trucksAllotted || 0),
+        0
+      );
+      const pricePerTruck = truckCount > 0 ? freightCost / truckCount : 0;
+      const priceDiv251100 = pricePerTruck / 251100;
+      return {
+        rfqNumber: rfq.RFQNumber || '',
+        state:     rfq.dropLocationState || 'Unknown',
+        freightCost,
+        truckCount,
+        pricePerTruck,
+        priceDiv251100
+      };
+    }));
+
+    // 2a) Sort descending by priceDiv251100
+    rows.sort((a, b) => b.priceDiv251100 - a.priceDiv251100);
+
+    // 3) JSON or Excel output
+    if (format === 'json') {
+      return res.json(rows);
+    }
+    if (format === 'xlsx') {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Freight Costs');
+      sheet.columns = [
+        { header: 'RFQ Number',      key: 'rfqNumber',      width: 15 },
+        { header: 'State',           key: 'state',          width: 20 },
+        { header: 'Freight Cost',    key: 'freightCost',    width: 15 },
+        { header: 'Truck Count',     key: 'truckCount',     width: 12 },
+        { header: 'Price per Truck', key: 'pricePerTruck',  width: 15 },
+        { header: 'Price / 251100',  key: 'priceDiv251100', width: 18 },
+      ];
+      rows.forEach(r => sheet.addRow(r));
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      res.setHeader(
+        'Content-Disposition',
+        'attachment; filename="freight-costs.xlsx"'
+      );
+      await workbook.xlsx.write(res);
+      return res.end();
+    }
+
+    // unsupported format
+    res.status(400).send('Invalid format. Use .json or .xlsx');
+  } catch (err) {
+    console.error('Error generating freight-costs export:', err);
+    res.status(500).json({ error: 'Failed to export freight costs' });
+  }
+});
+
+// ============ Helper to build workbook & compute pivot ============
+async function buildFreightWorkbook() {
+  // Fetch RFQs except the excluded ones
+  const rfqs = await RFQ.find({
+    RFQNumber: { $nin: excludedRFQNumbers }
+  }).lean();
+
+  // Build detail rows
+  const detailRows = await Promise.all(rfqs.map(async (rfq) => {
+    const quotes = await Quote.find({ rfqId: rfq._id }).lean();
+    const freightCost = quotes.reduce(
+      (sum, q) => sum + (q.price || 0) * (q.trucksAllotted || 0),
+      0
+    );
+    if (!freightCost) return null;  // skip zero‐cost RFQs
+    const truckCount = quotes.reduce(
+      (sum, q) => sum + (q.trucksAllotted || 0),
+      0
+    );
+    const pricePerTruck = truckCount ? freightCost / truckCount : 0;
+    const priceDiv251100 = pricePerTruck / 251100;
+    return {
+      rfqNumber:     rfq.RFQNumber || '',
+      state:         rfq.dropLocationState || 'Unknown',
+      freightCost,
+      truckCount,
+      pricePerTruck,
+      priceDiv251100
+    };
+  }));
+  const filteredDetails = detailRows.filter(r => r);
+  // sort detail sheet descending by priceDiv251100
+  filteredDetails.sort((a, b) => b.priceDiv251100 - a.priceDiv251100);
+
+  // Pivot: average INR/Wp by state
+  const byState = {};
+  filteredDetails.forEach(r => {
+    (byState[r.state] = byState[r.state] || []).push(r.priceDiv251100);
+  });
+  let pivot = Object.entries(byState).map(([ state, arr ]) => ({
+    state,
+    avgINRperWp: arr.reduce((a, b) => a + b, 0) / arr.length
+  }));
+  // sort pivot descending
+  pivot.sort((a, b) => b.avgINRperWp - a.avgINRperWp);
+  // compute overall average INR/Wp across all states
+  const overallAvg =
+    pivot.reduce((sum, p) => sum + p.avgINRperWp, 0) / pivot.length;
+  // append overall average row
+  pivot.push({ state: 'Overall Average', avgINRperWp: overallAvg });
+
+  // build workbook
+  const wb = new ExcelJS.Workbook();
+  // sheet1: detail
+  const sheet1 = wb.addWorksheet("Freight Costs");
+  sheet1.columns = [
+    { header: "RFQ Number",   key: "rfqNumber",      width: 15 },
+    { header: "State",        key: "state",          width: 20 },
+    { header: "Freight Cost", key: "freightCost",    width: 15 },
+    { header: "Truck Count",  key: "truckCount",     width: 12 },
+    { header: "Price/Truck",  key: "pricePerTruck",  width: 15 },
+    { header: "INR/Wp",       key: "priceDiv251100", width: 12 },
+  ];
+  filteredDetails.forEach(r => sheet1.addRow(r));
+
+  // sheet2: pivot + overall
+  const sheet2 = wb.addWorksheet("Avg INR-per-Wp");
+  sheet2.columns = [
+    { header: "State",      key: "state",      width: 20 },
+    { header: "Avg INR/Wp", key: "avgINRperWp", width: 15 },
+  ];
+  pivot.forEach(p => sheet2.addRow(p));
+
+  return { wb, pivot };
+}
+
+// =========== Helper to send workbook + inline pivot email ===========
+async function sendWeeklyFreight() {
+  const { wb, pivot } = await buildFreightWorkbook();
+  const buffer = await wb.xlsx.writeBuffer();
+  const base64 = buffer.toString("base64");
+
+  // separate out overall average from pivot (last entry)
+  const overall = pivot.find(p => p.state === 'Overall Average');
+  const statesOnly = pivot.filter(p => p.state !== 'Overall Average');
+
+  // build HTML table, sorted descending
+  const htmlRows = statesOnly.map(p =>
+    `<tr><td>${p.state}</td><td>${p.avgINRperWp.toFixed(4)}</td></tr>`
+  ).join("");
+  const table = `
+    <table border="1" cellpadding="5">
+      <thead><tr><th>State</th><th>Avg INR/Wp</th></tr></thead>
+      <tbody>
+        ${htmlRows}
+        <tr><th>Overall Average</th><th>${overall.avgINRperWp.toFixed(4)}</th></tr>
+      </tbody>
+    </table>`;
+
+  const message = {
+    subject: "Automated Weekly Freight-Cost Report",
+    body: {
+      contentType: "HTML",
+      content: `
+        <p><strong>Overall Average INR/Wp across all states:</strong>
+           ${overall.avgINRperWp.toFixed(4)}</p>
+        <p>Below is the state-wise Avg INR/Wp (descending):</p>
+        ${table}`
+    },
+    toRecipients: [
+      { emailAddress: { address: "aarnav.singh@premierenergies.com" } },
+      { emailAddress: { address: "saumya.ranjan@premierenergies.com" } },
+      { emailAddress: { address: "saisathvika.v@premierenergies.com" } },
+      { emailAddress: { address: "sivabala.sm@premierenergies.com" } }
+    ],
+    attachments: [
+      {
+        "@odata.type": "#microsoft.graph.fileAttachment",
+        name: "freight-costs-weekly.xlsx",
+        contentBytes: base64
+      }
+    ]
+  };
+
+  await client.api(`/users/${SENDER_EMAIL}/sendMail`).post({ message });
+}
+
+// ============ Schedule + fire off weekly sender ============
+app.get("/api/freight-costs/send-weekly", async (req, res) => {
+  try {
+    // send immediately
+    await sendWeeklyFreight();
+
+    // schedule for every Sunday at 23:59 IST
+    cron.schedule(
+      "59 23 * * 0",
+      sendWeeklyFreight,
+      { timezone: "Asia/Kolkata" }
+    );
+
+    return res.json({
+      message:
+        "Report sent immediately, and scheduled weekly on Sundays at 23:59 IST."
+    });
+  } catch (err) {
+    console.error("Error in /api/freight-costs/send-weekly:", err);
+    return res.status(500).json({
+      error: "Failed to send and schedule weekly freight-cost report."
+    });
   }
 });
 
