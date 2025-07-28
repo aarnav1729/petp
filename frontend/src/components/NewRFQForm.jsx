@@ -781,6 +781,28 @@ const NewRFQForm = ({ overrideFlag }) => {
       "South 24 Parganas",
       "Uttar Dinajpur (North Dinajpur)",
     ],
+    "Jammu and Kashmir": [
+      "Anantnag",
+      "Bandipora",
+      "Baramulla",
+      "Budgam",
+      "Doda",
+      "Ganderbal",
+      "Jammu",
+      "Kathua",
+      "Kishtwar",
+      "Kulgam",
+      "Kupwara",
+      "Poonch",
+      "Pulwama",
+      "Rajouri",
+      "Ramban",
+      "Reasi",
+      "Samba",
+      "Shopian",
+      "Srinagar",
+      "Udhampur",
+    ],
   };
 
   useEffect(() => {
