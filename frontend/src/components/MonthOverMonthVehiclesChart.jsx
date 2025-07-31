@@ -5,7 +5,7 @@ import axios from "axios";
 import * as am5 from "@amcharts/amcharts5";
 import * as am5xy from "@amcharts/amcharts5/xy";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
-const API = window.location.origin;
+const API = "https://14.194.111.58:10443";
 const MonthOverMonthVehiclesChart = () => {
   useEffect(() => {
     // Create root

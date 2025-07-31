@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from "react";
 import CollapsibleSection from "./CollapsibleSection";
 import "./MDView.css";
-const API = window.location.origin;
+const API = "https://14.194.111.58:10443";
 const TransportationCostsChart = React.lazy(() =>
   import("./TransportationCostsChart")
 );

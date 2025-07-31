@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import moment from "moment";
-const API = window.location.origin;
+const API = "https://14.194.111.58:10443";
 const EvalRFQs = ({ userRole }) => {
   const { rfqId } = useParams();
   const navigate = useNavigate();

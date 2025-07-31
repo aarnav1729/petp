@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-const API = window.location.origin;
+const API = "https://14.194.111.58:10443";
 const PendingRFQs = ({ username }) => {
   const [pendingRFQs, setPendingRFQs] = useState([]);
   const [loading, setLoading] = useState(true);

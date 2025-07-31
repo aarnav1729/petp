@@ -3,13 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-
+const API = "https://14.194.111.58:10443";
 const FactoryRFQList = () => {
   const [rfqs, setRfqs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const navigate = useNavigate();
-  const API = window.location.origin;
+
   useEffect(() => {
     fetchRFQs();
 

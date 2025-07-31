@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
-const API = window.location.origin;
+const API = "https://14.194.111.58:10443";
 const LRNumberSubmission = ({ username }) => {
   const { rfqId } = useParams();
   const [rfqDetails, setRfqDetails] = useState(null);

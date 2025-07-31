@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-const API = window.location.origin;
+const API = "https://14.194.111.58:10443";
 // create and export vendor rfq list component
 const VendorRFQList = ({ username }) => {
   const [rfqs, setRfqs] = useState([]);

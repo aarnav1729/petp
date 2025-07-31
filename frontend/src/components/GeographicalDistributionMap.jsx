@@ -7,7 +7,7 @@ import * as am4maps from "@amcharts/amcharts4/maps";
 // Import India map data
 import am4geodata_india2019High from "@amcharts/amcharts4-geodata/india2019High";
 import './GeographicalDistributionMap.css';
-const API = window.location.origin;
+const API = "https://14.194.111.58:10443";
 const GeographicalDistributionMap = () => {
   const chartRef = useRef(null);
   const [selectedState, setSelectedState] = useState(null);

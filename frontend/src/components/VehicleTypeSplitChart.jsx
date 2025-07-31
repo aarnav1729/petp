@@ -5,7 +5,7 @@ import * as am5 from "@amcharts/amcharts5";
 import * as am5percent from "@amcharts/amcharts5/percent";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import axios from "axios";
-const API = window.location.origin;
+const API = "https://14.194.111.58:10443";
 const VehicleTypeSplitChart = () => {
   useEffect(() => {
     // Create root element and set themes

@@ -1,7 +1,7 @@
 // ./components/SalesOrders.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-const API = window.location.origin;
+const API = "https://14.194.111.58:10443";
 
 const SalesOrders = () => {
   const [salesOrders, setSalesOrders] = useState([]);

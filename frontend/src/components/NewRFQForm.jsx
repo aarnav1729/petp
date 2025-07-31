@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import PropTypes from "prop-types";  // Import PropTypes
-
+const API = "https://14.194.111.58:10443";
 const NewRFQForm = ({ overrideFlag }) => {
   const [formData, setFormData] = useState({
     RFQNumber: "",

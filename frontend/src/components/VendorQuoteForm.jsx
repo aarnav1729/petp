@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-const API = window.location.origin;
+const API = "https://14.194.111.58:10443";
 // create and export vendor quote form component
 const VendorQuoteForm = ({ username }) => {
   // get rfqid from url parameters
