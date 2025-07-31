@@ -1,7 +1,7 @@
 // SalesOrders.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-
+const API = window.location.origin;
 const SalesOrders = () => {
   const [salesOrders, setSalesOrders] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -26,7 +26,7 @@ const SalesOrders = () => {
   const fetchSalesOrders = async () => {
     try {
       const response = await axios.get(
-        "https://leaf-tn20.onrender.com/api/sales/orders"
+        `${API}/api/sales/orders`
       );
       setSalesOrders(response.data);
     } catch (error) {
@@ -42,7 +42,7 @@ const SalesOrders = () => {
 
       // Update the override flag value
       await axios.patch(
-        `https://leaf-tn20.onrender.com/api/sales/orders/${projectCode}/override`,
+        `${API}/api/sales/orders/${projectCode}/override`,
         { canOverride: newOverrideValue }
       );
 
@@ -78,7 +78,7 @@ const SalesOrders = () => {
     try {
       // Compute projectCode by concatenating customerName, projectCapacity, and siteLocation
       const projectCode = `${formData.customerName}-${formData.projectCapacity}-${formData.siteLocation}`;
-      await axios.post("https://leaf-tn20.onrender.com/api/sales/orders", {
+      await axios.post(`${API}/api/sales/orders`, {
         customerName: formData.customerName,
         projectCapacity: parseFloat(formData.projectCapacity),
         siteLocation: formData.siteLocation,

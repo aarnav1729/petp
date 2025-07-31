@@ -5,7 +5,7 @@ import axios from "axios";
 import * as am5 from "@amcharts/amcharts5";
 import * as am5xy from "@amcharts/amcharts5/xy";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
-
+const API = window.location.origin;
 const MonthOverMonthVehiclesChart = () => {
   useEffect(() => {
     // Create root
@@ -73,7 +73,7 @@ const MonthOverMonthVehiclesChart = () => {
 
     // Fetch data
     axios
-      .get("https://leaf-tn20.onrender.com/api/md/monthly-vehicles")
+      .get(`${API}/api/md/monthly-vehicles`)
       .then((response) => {
         // response.data should be an array of objects, e.g.:
         // [ { month: 'Jan 2024', vehicles: 30 }, { month: 'Feb 2024', vehicles: 12 } ... ]

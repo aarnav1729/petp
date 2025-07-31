@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-
+const API = window.location.origin;
 const ClosedRFQs = () => {
   const [rfqs, setRfqs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -8,7 +8,7 @@ const ClosedRFQs = () => {
   useEffect(() => {
     const fetchClosedRFQs = async () => {
       try {
-        const response = await axios.get('https://leaf-tn20.onrender.com/api/closed-rfqs');
+        const response = await axios.get(`${API}/api/closed-rfqs`);
         setRfqs(response.data);
         setLoading(false);
       } catch (error) {

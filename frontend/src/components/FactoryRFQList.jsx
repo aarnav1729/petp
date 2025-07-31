@@ -9,7 +9,7 @@ const FactoryRFQList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const navigate = useNavigate();
-
+  const API = window.location.origin;
   useEffect(() => {
     fetchRFQs();
 
@@ -20,7 +20,7 @@ const FactoryRFQList = () => {
 
   const fetchRFQs = async () => {
     try {
-      const response = await axios.get('https://leaf-tn20.onrender.com/api/rfqs');
+      const response = await axios.get(`${API}/api/rfqs`);
       setRfqs(response.data);
     } catch (error) {
       console.error('Error fetching RFQs:', error);

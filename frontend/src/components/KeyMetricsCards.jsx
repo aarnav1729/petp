@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-
+const API = window.location.origin;
 const KeyMetricsCards = () => {
   const [metrics, setMetrics] = useState({
     totalRFQs: 0,
@@ -11,7 +11,7 @@ const KeyMetricsCards = () => {
   });
 
   useEffect(() => {
-    axios.get('https://leaf-tn20.onrender.com/api/md/key-metrics')
+    axios.get(`${API}/api/md/key-metrics`)
       .then(response => {
         setMetrics(response.data);
       })

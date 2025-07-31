@@ -3,7 +3,7 @@ import axios from 'axios';
 import * as am4core from '@amcharts/amcharts4/core';
 import * as am4charts from '@amcharts/amcharts4/charts';
 import am4themes_animated from '@amcharts/amcharts4/themes/animated';
-
+const API = window.location.origin;
 am4core.useTheme(am4themes_animated);
 
 const VendorParticipationChart = () => {
@@ -13,7 +13,7 @@ const VendorParticipationChart = () => {
 
   // Fetch all vendors for the filter dropdown
   useEffect(() => {
-    axios.get('https://leaf-tn20.onrender.com/api/md/vendors')
+    axios.get(`${API}/api/md/vendors`)
       .then(response => {
         setVendors(response.data);
       })
@@ -33,7 +33,7 @@ const VendorParticipationChart = () => {
 
     // Function to load data based on selected vendor
     const loadChartData = () => {
-      let url = 'https://leaf-tn20.onrender.com/api/md/vendor-participation';
+      let url = `${API}/api/md/vendor-participation`;
       if (selectedVendor !== 'all') {
         url += `?vendorName=${selectedVendor}`;
       }

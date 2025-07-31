@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
+const API = window.location.origin;
 const VendorList = () => {
   const [vendors, setVendors] = useState([]);
   const [factoryUsers, setFactoryUsers] = useState([]);
@@ -34,7 +34,7 @@ const VendorList = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await axios.get("https://leaf-tn20.onrender.com/api/vendors");
+      const response = await axios.get(`${API}/api/vendors`);
       setVendors(response.data);
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -44,7 +44,7 @@ const VendorList = () => {
   const fetchFactoryUsers = async () => {
     try {
       const response = await axios.get(
-        "https://leaf-tn20.onrender.com/api/factory-users"
+        `${API}/api/factory-users`
       );
       setFactoryUsers(response.data);
     } catch (error) {
@@ -56,7 +56,7 @@ const VendorList = () => {
     e.preventDefault();
     try {
       await axios.post(
-        "https://leaf-tn20.onrender.com/api/add-vendor",
+        `${API}/api/add-vendor`,
         vendorFormData
       );
       fetchVendors();
@@ -77,7 +77,7 @@ const VendorList = () => {
   const addFactoryUser = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("https://leaf-tn20.onrender.com/api/add-factory-user", factoryFormData);
+      await axios.post(`${API}/api/add-factory-user`, factoryFormData);
       fetchFactoryUsers();
       setFactoryFormData({ username: "", password: "", email: "", contactNumber: "" });
       setShowFactoryForm(false);
@@ -90,7 +90,7 @@ const VendorList = () => {
 
   const deleteVendor = async (id) => {
     try {
-      await axios.delete(`https://leaf-tn20.onrender.com/api/vendors/${id}`);
+      await axios.delete(`${API}/api/vendors/${id}`);
       fetchVendors();
     } catch (error) {
       console.error("Error deleting vendor:", error);
@@ -99,7 +99,7 @@ const VendorList = () => {
 
   const deleteFactoryUser = async (id) => {
     try {
-      await axios.delete(`https://leaf-tn20.onrender.com/api/factory-users/${id}`);
+      await axios.delete(`${API}/api/factory-users/${id}`);
       fetchFactoryUsers();
     } catch (error) {
       console.error("Error deleting factory user:", error);

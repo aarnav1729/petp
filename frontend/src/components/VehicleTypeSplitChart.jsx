@@ -5,7 +5,7 @@ import * as am5 from "@amcharts/amcharts5";
 import * as am5percent from "@amcharts/amcharts5/percent";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import axios from "axios";
-
+const API = window.location.origin;
 const VehicleTypeSplitChart = () => {
   useEffect(() => {
     // Create root element and set themes
@@ -32,7 +32,7 @@ const VehicleTypeSplitChart = () => {
 
     // Fetch data from the backend endpoint
     axios
-      .get("https://leaf-tn20.onrender.com/api/md/vehicle-type-details-split")
+      .get(`${API}/api/md/vehicle-type-details-split`)
       .then((response) => {
         // The backend returns an array of objects, e.g.:
         // [

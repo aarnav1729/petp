@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-
+const API = window.location.origin;
 const ActiveAuctions = () => {
   const [auctions, setAuctions] = useState([]);
 
   useEffect(() => {
     const fetchActiveAuctions = async () => {
       try {
-        const response = await axios.get('https://leaf-tn20.onrender.com/api/active-auctions');
+        const response = await axios.get(`${API}/api/active-auctions`);
         setAuctions(response.data);
       } catch (error) {
         console.error('Error fetching active auctions:', error);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import moment from "moment";
-
+const API = window.location.origin;
 const EvalRFQs = ({ userRole }) => {
   const { rfqId } = useParams();
   const navigate = useNavigate();
@@ -77,7 +77,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}`
+        `${API}/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
       setRfqStatus(response.data.status);
@@ -89,7 +89,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchQuotes = async () => {
     try {
       const response = await axios.get(
-        `https://leaf-tn20.onrender.com/api/quotes/${rfqId}`
+        `${API}/api/quotes/${rfqId}`
       );
       setQuotes(response.data);
     } catch (error) {
@@ -100,7 +100,7 @@ const EvalRFQs = ({ userRole }) => {
   const fetchVendors = async () => {
     try {
       const response = await axios.get(
-        "https://leaf-tn20.onrender.com/api/vendors"
+        `${API}/api/vendors`
       );
       setVendors(response.data);
     } catch (error) {
@@ -238,7 +238,7 @@ const EvalRFQs = ({ userRole }) => {
 
     try {
       const response = await axios.post(
-        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}/finalize-allocation`,
+        `${API}/api/rfq/${rfqId}/finalize-allocation`,
         {
           logisticsAllocation,
           finalizeReason: isIdentical ? "" : finalizeReason,

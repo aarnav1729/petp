@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-
+const API = window.location.origin;
 const RFQList = () => {
   const [rfqs, setRfqs] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,7 +20,7 @@ const RFQList = () => {
 
   const fetchRFQs = async () => {
     try {
-      const response = await axios.get('https://leaf-tn20.onrender.com/api/rfqs');
+      const response = await axios.get(`${API}/api/rfqs`);
       setRfqs(response.data);
     } catch (error) {
       console.error('Error fetching RFQs:', error);
@@ -30,7 +30,7 @@ const RFQList = () => {
   const updateStatus = async (id, newStatus) => {
     console.log(`Updating RFQ with ID: ${id}, New Status: ${newStatus}`);
     try {
-      await axios.patch(`https://leaf-tn20.onrender.com/api/rfq/${id}`, { status: newStatus });
+      await axios.patch(`${API}/api/rfq/${id}`, { status: newStatus });
 
       // Find the RFQ in the current state and update its status directly
       setRfqs(prevRfqs =>

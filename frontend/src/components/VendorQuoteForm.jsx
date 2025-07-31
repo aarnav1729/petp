@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-
+const API = window.location.origin;
 // create and export vendor quote form component
 const VendorQuoteForm = ({ username }) => {
   // get rfqid from url parameters
@@ -39,7 +39,7 @@ const VendorQuoteForm = ({ username }) => {
       // fetch rfq details from backend
       try {
         const response = await axios.get(
-          `https://leaf-tn20.onrender.com/api/rfq/${rfqId}`
+          `${API}/api/rfq/${rfqId}`
         );
         setRfqDetails(response.data);
         setRfqStatus(response.data.status);
@@ -51,7 +51,7 @@ const VendorQuoteForm = ({ username }) => {
 
         // fetch quote and number of trucks from backend
         const quoteResponse = await axios.get(
-          `https://leaf-tn20.onrender.com/api/quotes/${rfqId}`
+          `${API}/api/quotes/${rfqId}`
         );
         const existingQuote = quoteResponse.data.find(
           (q) => q.vendorName === username
@@ -82,7 +82,7 @@ const VendorQuoteForm = ({ username }) => {
     const fetchVendorDetails = async () => {
       try {
         const response = await axios.get(
-          `https://leaf-tn20.onrender.com/api/vendors/username/${username}`
+          `${API}/api/vendors/username/${username}`
         );
         setVendorDetails(response.data);
       } catch (error) {
@@ -144,12 +144,12 @@ const VendorQuoteForm = ({ username }) => {
       // update existing quote or create new quote
       if (vendorQuote) {
         await axios.put(
-          `https://leaf-tn20.onrender.com/api/quote/${vendorQuote._id}`,
+          `${API}/api/quote/${vendorQuote._id}`,
           quoteData
         );
         alert("Quote updated successfully!");
       } else {
-        await axios.post("https://leaf-tn20.onrender.com/api/quote", quoteData);
+        await axios.post(`${API}/api/quote`, quoteData);
         alert("Quote submitted successfully!");
       }
 
@@ -236,7 +236,7 @@ const VendorQuoteForm = ({ username }) => {
     try {
       // Send request to backend to send the agreement email
       await axios.post(
-        "https://leaf-tn20.onrender.com/api/send-terms-agreement-email",
+        `${API}/api/send-terms-agreement-email`,
         {
           rfqId,
           vendorName: username,

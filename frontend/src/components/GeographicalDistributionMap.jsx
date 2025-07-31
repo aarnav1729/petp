@@ -7,7 +7,7 @@ import * as am4maps from "@amcharts/amcharts4/maps";
 // Import India map data
 import am4geodata_india2019High from "@amcharts/amcharts4-geodata/india2019High";
 import './GeographicalDistributionMap.css';
-
+const API = window.location.origin;
 const GeographicalDistributionMap = () => {
   const chartRef = useRef(null);
   const [selectedState, setSelectedState] = useState(null);
@@ -758,7 +758,7 @@ const GeographicalDistributionMap = () => {
   useEffect(() => {
     // Fetch state-level data
     axios
-      .get("http://localhost:5000/api/md/geographical-distribution")
+      .get(`${API}/api/md/geographical-distribution`)
       .then((response) => {
         setMapData(response.data);
       })
@@ -895,7 +895,7 @@ const GeographicalDistributionMap = () => {
     // Fetch district-level data for the selected state
     axios
       .get(
-        `http://localhost:5000/api/md/geographical-distribution?state=${encodeURIComponent(
+        `${API}/api/md/geographical-distribution?state=${encodeURIComponent(
           stateName
         )}`
       )

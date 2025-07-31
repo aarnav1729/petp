@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import moment from "moment-timezone";
 import axios from "axios";
-
+const API = window.location.origin;
 const AuctionRoom = ({ username, role }) => {
   const { rfqId } = useParams();
   const vendorName = username;
@@ -16,7 +16,7 @@ const AuctionRoom = ({ username, role }) => {
   useEffect(() => {
     const fetchRFQDetails = async () => {
       try {
-        const response = await axios.get(`https://leaf-tn20.onrender.com/api/rfq/${rfqId}`);
+        const response = await axios.get(`${API}/api/rfq/${rfqId}`);
         const rfq = response.data;
 
         setRfqNumber(rfq.RFQNumber);
@@ -24,7 +24,7 @@ const AuctionRoom = ({ username, role }) => {
 
         if (role === "vendor") {
           // Prepopulate bid inputs with the current vendor's existing bid if it exists
-          const bidResponse = await axios.get(`https://leaf-tn20.onrender.com/api/quotes/${rfqId}`);
+          const bidResponse = await axios.get(`${API}/api/quotes/${rfqId}`);
           const existingBid = bidResponse.data.find(quote => quote.vendorName === vendorName);
 
           if (existingBid) {
@@ -66,7 +66,7 @@ const AuctionRoom = ({ username, role }) => {
   useEffect(() => {
     const fetchBids = async () => {
       try {
-        const response = await axios.get(`https://leaf-tn20.onrender.com/api/quotes/${rfqId}`);
+        const response = await axios.get(`${API}/api/quotes/${rfqId}`);
         if (role === "vendor") {
           setVendorQuotes(response.data.reduce((acc, quote) => {
             if (quote.vendorName === vendorName) {
@@ -124,7 +124,7 @@ const AuctionRoom = ({ username, role }) => {
     if (!isNaN(price) && !isNaN(numberOfTrucks)) {
       try {
         // Fetch the current RFQ details to get the eReverse end time
-        const rfqResponse = await axios.get(`https://leaf-tn20.onrender.com/api/rfq/${rfqId}`);
+        const rfqResponse = await axios.get(`${API}/api/rfq/${rfqId}`);
         const rfq = rfqResponse.data;
         const eReverseDateTime = moment.tz(
           `${moment(rfq.eReverseDate).format('YYYY-MM-DD')} ${rfq.eReverseTime}`,
@@ -155,7 +155,7 @@ const AuctionRoom = ({ username, role }) => {
         if (vendorQuotes[rfqId]) {
           // Update existing bid
           await axios.put(
-            `https://leaf-tn20.onrender.com/api/quote/${vendorQuotes[rfqId]._id}`,
+            `${API}/api/quote/${vendorQuotes[rfqId]._id}`,
             {
               rfqId,
               vendorName,
@@ -166,7 +166,7 @@ const AuctionRoom = ({ username, role }) => {
           );
         } else {
           // Create a new bid
-          await axios.post("https://leaf-tn20.onrender.com/api/quote", {
+          await axios.post(`${API}/api/quote`, {
             rfqId,
             vendorName,
             quote: price,
@@ -176,7 +176,7 @@ const AuctionRoom = ({ username, role }) => {
         }
 
         // Fetch updated bids
-        const response = await axios.get(`https://leaf-tn20.onrender.com/api/quotes/${rfqId}`);
+        const response = await axios.get(`${API}/api/quotes/${rfqId}`);
         const labeledQuotes = assignQuoteLabels(response.data, numberOfVehicles);
         setBids(labeledQuotes);
 

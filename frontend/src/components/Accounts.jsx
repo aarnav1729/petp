@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
+const API = window.location.origin;
 const Accounts = () => {
   const [pendingAccounts, setPendingAccounts] = useState([]);
 
@@ -10,7 +10,7 @@ const Accounts = () => {
 
   const fetchPendingAccounts = async () => {
     try {
-      const response = await axios.get("https://leaf-tn20.onrender.com/api/pending-accounts");
+      const response = await axios.get(`${API}/api/pending-accounts`);
       setPendingAccounts(response.data);
     } catch (error) {
       console.error("Error fetching pending accounts:", error);
@@ -19,7 +19,7 @@ const Accounts = () => {
 
   const approveAccount = async (id) => {
     try {
-      await axios.post(`https://leaf-tn20.onrender.com/api/approve-account/${id}`);
+      await axios.post(`${API}/api/approve-account/${id}`);
       // remove the approved account from the list
       setPendingAccounts(pendingAccounts.filter((account) => account._id !== id));
     } catch (error) {
@@ -29,7 +29,7 @@ const Accounts = () => {
 
   const declineAccount = async (id) => {
     try {
-      await axios.post(`https://leaf-tn20.onrender.com/api/decline-account/${id}`);
+      await axios.post(`${API}/api/decline-account/${id}`);
       // remove the declined account from the list
       setPendingAccounts(pendingAccounts.filter((account) => account._id !== id));
     } catch (error) {

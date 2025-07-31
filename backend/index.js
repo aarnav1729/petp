@@ -13,6 +13,11 @@ const { Server } = require("socket.io");
 const path = require("path");
 const axios = require("axios");
 const ExcelJS = require('exceljs');
+const compression = require("compression"); 
+
+require('dotenv').config();
+const fs     = require('fs');
+const https  = require('https');
 
 // outlook emails
 const { Client } = require("@microsoft/microsoft-graph-client");
@@ -58,8 +63,9 @@ const io = new Server(server, {
 });
 
 // middleware
-app.use(cors({ origin: "*" }));
+app.use(cors({ origin: "*" }));        // gzip responses (same as INVEST)
 app.use(express.json());
+app.use(compression()); 
 
 //mssql config
 //const config = {
@@ -3950,9 +3956,34 @@ app.get("/api/freight-costs/send-weekly", async (req, res) => {
   }
 });
 
-// start server
-const PORT = process.env.PORT || 7707;
+const httpsOptions = {
+  key: fs.readFileSync(path.join(__dirname, "certs", "mydomain.key"), "utf8"),
+  cert: fs.readFileSync(
+    path.join(__dirname, "certs", "d466aacf3db3f299.crt"),
+    "utf8"
+  ),
+  ca: fs.readFileSync(
+    path.join(__dirname, "certs", "gd_bundle-g2-g1.crt"),
+    "utf8"
+  ),
+};
 
-server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+// start server
+const PORT = process.env.PORT || 10443;   // already correct
+const HOST = process.env.HOST || "0.0.0.0"; // 🔹 add if you need external bind
+
+async function start() {
+  try {
+    https.createServer(httpsOptions, app).listen(PORT, HOST, () => {
+      console.log(
+        `🔒 HTTPS ready → https://${
+          HOST === "0.0.0.0" ? "localhost" : HOST
+        }:${PORT}`
+      );
+    });
+  } catch (err) {
+    console.error("❌ Server start failed:", err);
+    process.exit(1);
+  }
+}
+start();

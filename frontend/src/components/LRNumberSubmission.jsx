@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
-
+const API = window.location.origin;
 const LRNumberSubmission = ({ username }) => {
   const { rfqId } = useParams();
   const [rfqDetails, setRfqDetails] = useState(null);
@@ -15,7 +15,7 @@ const LRNumberSubmission = ({ username }) => {
     const fetchRfqDetails = async () => {
       try {
         const response = await axios.get(
-          `https://leaf-tn20.onrender.com/api/vendor/rfq/${rfqId}/details/${username}`
+          `${API}/api/vendor/rfq/${rfqId}/details/${username}`
         );
         setRfqDetails(response.data.rfq);
         setTrucksAllotted(response.data.trucksAllotted);
@@ -46,7 +46,7 @@ const LRNumberSubmission = ({ username }) => {
 
     try {
       await axios.post(
-        `https://leaf-tn20.onrender.com/api/vendor/rfq/${rfqId}/submit-lr-number`,
+        `${API}/api/vendor/rfq/${rfqId}/submit-lr-number`,
         {
           username,
           index,

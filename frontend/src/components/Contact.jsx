@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import axios from "axios";
-
+const API = window.location.origin;
 const Contact = () => {
   // State variables for form fields
   const [formData, setFormData] = useState({
@@ -46,7 +46,7 @@ const Contact = () => {
 
     try {
       // Send form data to the backend API endpoint
-      await axios.post("https://leaf-tn20.onrender.com/api/contact", formData);
+      await axios.post(`${API}/api/contact`, formData);
       setSubmissionSuccess(true);
       setFormData({
         name: "",

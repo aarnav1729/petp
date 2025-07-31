@@ -1,6 +1,7 @@
 // ./components/SalesOrders.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+const API = window.location.origin;
 
 const SalesOrders = () => {
   const [salesOrders, setSalesOrders] = useState([]);
@@ -21,7 +22,7 @@ const SalesOrders = () => {
 
   const fetchSalesOrders = async () => {
     try {
-      const response = await axios.get('https://leaf-tn20.onrender.com/api/sales/orders');
+      const response = await axios.get(`${API}/api/sales/orders`);
       setSalesOrders(response.data);
     } catch (error) {
       console.error('Error fetching sales orders:', error);
@@ -31,7 +32,7 @@ const SalesOrders = () => {
   const handleToggle = async (projectCode, canOverride) => {
     try {
       await axios.patch(
-        `https://leaf-tn20.onrender.com/api/sales/orders/${projectCode}/override`,
+        `${API}/api/sales/orders/${projectCode}/override`,
         { canOverride: !canOverride }
       );
       fetchSalesOrders(); // Refresh sales orders after toggle
@@ -63,7 +64,7 @@ const SalesOrders = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post('https://leaf-tn20.onrender.com/api/sales/orders', {
+      await axios.post(`${API}/api/sales/orders`, {
         orderNumber: formData.orderNumber,
         quantity: parseFloat(formData.quantity),
         customerName: formData.customerName,

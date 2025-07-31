@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-
+const API = window.location.origin;
 const PendingRFQs = ({ username }) => {
   const [pendingRFQs, setPendingRFQs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +14,7 @@ const PendingRFQs = ({ username }) => {
       try {
         console.log('Fetching pending RFQs for username:', username);
         const response = await axios.get(
-          `https://leaf-tn20.onrender.com/api/vendor-pending-rfqs/${username}`
+          `${API}/api/vendor-pending-rfqs/${username}`
         );
         setPendingRFQs(response.data);
         setLoading(false);

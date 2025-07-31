@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-
+const API = window.location.origin;
 // create and export vendor rfq list component
 const VendorRFQList = ({ username }) => {
   const [rfqs, setRfqs] = useState([]);
@@ -13,7 +13,7 @@ const VendorRFQList = ({ username }) => {
   const fetchVendorQuotes = async () => {
     
     try {
-      const response = await axios.get("https://leaf-tn20.onrender.com/api/quotes");
+      const response = await axios.get(`${API}/api/quotes`);
       // filter quotes by vendor name
       const quotesByVendor = response.data.reduce((acc, quote) => {
         // set vendor quotes
@@ -32,7 +32,7 @@ const VendorRFQList = ({ username }) => {
   const fetchRFQs = async () => {
     try {
       const response = await axios.get(
-        `https://leaf-tn20.onrender.com/api/rfqs/vendor/${username}`
+        `${API}/api/rfqs/vendor/${username}`
       );
       setRfqs(response.data);
     } catch (error) {

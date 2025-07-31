@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-
+const API = window.location.origin;
 const FastagTracking = () => {
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [responseData, setResponseData] = useState(null);
@@ -19,7 +19,7 @@ const FastagTracking = () => {
     try {
       // Corrected: remove the extra "+" before the object
       const res = await axios.post(
-        "http://localhost:5000/api/fastag-tracking",
+        `${API}/api/fastag-tracking`,
         {
           vehiclenumber: vehicleNumber,
         }

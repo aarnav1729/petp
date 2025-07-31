@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+const API = window.location.origin;
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState("");
@@ -22,7 +23,7 @@ const Login = ({ onLogin }) => {
       return;
     }
     try { 
-      const response = await axios.post("https://leaf-tn20.onrender.com/api/send-otp", {
+      const response = await axios.post(`${API}/api/send-otp`, {
         email,
       });
       if (response.data.success) {
@@ -43,7 +44,7 @@ const Login = ({ onLogin }) => {
     if (!isRegistering) {
       // login process
       try {
-        const response = await axios.post("https://leaf-tn20.onrender.com/api/login", {
+        const response = await axios.post(`${API}/api/login`, {
           username,
           password,
         });
@@ -74,7 +75,7 @@ const Login = ({ onLogin }) => {
         // OTP has been sent, verify OTP
         try {
           const response = await axios.post(
-            "https://leaf-tn20.onrender.com/api/verify-otp",
+            `${API}/api/verify-otp`,
             {
               email,
               otp: userOtp,
@@ -84,7 +85,7 @@ const Login = ({ onLogin }) => {
             // OTP verified, proceed to register
             try {
               const registerResponse = await axios.post(
-                "https://leaf-tn20.onrender.com/api/register",
+                `${API}/api/register`,
                 {
                   username,
                   password,

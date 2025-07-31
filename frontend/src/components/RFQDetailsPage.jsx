@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
-
+const API = window.location.origin;
 const RFQDetailsPage = ({ userRole }) => {
   const { rfqId } = useParams();
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ const RFQDetailsPage = ({ userRole }) => {
     const fetchQuotes = async () => {
       try {
         const response = await axios.get(
-          `https://leaf-tn20.onrender.com/api/quotes/${rfqId}`
+          `${API}/api/quotes/${rfqId}`
         );
         setQuotes(response.data);
       } catch (error) {
@@ -38,7 +38,7 @@ const RFQDetailsPage = ({ userRole }) => {
 
     const fetchVendors = async () => {
       try {
-        const response = await axios.get("https://leaf-tn20.onrender.com/api/vendors");
+        const response = await axios.get(`${API}/api/vendors`);
         setVendors(response.data);
       } catch (error) {
         console.error("Error fetching vendors:", error);
@@ -52,7 +52,7 @@ const RFQDetailsPage = ({ userRole }) => {
   const fetchRFQDetails = async () => {
     try {
       const response = await axios.get(
-        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}`
+        `${API}/api/rfq/${rfqId}`
       );
       setRfqDetails(response.data);
       setRfqStatus(response.data.status); // Set rfqStatus here
@@ -107,7 +107,7 @@ const RFQDetailsPage = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        "https://leaf-tn20.onrender.com/api/send-reminder",
+        `${API}/api/send-reminder`,
         {
           rfqId,
           vendorIds: reminderSelectedVendors,
@@ -128,7 +128,7 @@ const RFQDetailsPage = ({ userRole }) => {
     setStatusMessage("");
     try {
       const response = await axios.post(
-        `https://leaf-tn20.onrender.com/api/rfq/${rfqId}/add-vendors`,
+        `${API}/api/rfq/${rfqId}/add-vendors`,
         {
           vendorIds: addVendorsSelectedVendors,
         }
@@ -181,7 +181,7 @@ const RFQDetailsPage = ({ userRole }) => {
   const updateTrucksAllotted = async (quoteId) => {
     try {
       const quoteToUpdate = quotes.find((quote) => quote._id === quoteId);
-      await axios.put(`https://leaf-tn20.onrender.com/api/quote/${quoteId}`, {
+      await axios.put(`${API}/api/quote/${quoteId}`, {
         ...quoteToUpdate,
       });
       alert("Trucks allotted updated successfully.");

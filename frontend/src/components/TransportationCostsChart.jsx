@@ -3,7 +3,7 @@ import axios from 'axios';
 import * as am4core from '@amcharts/amcharts4/core';
 import * as am4charts from '@amcharts/amcharts4/charts';
 import am4themes_animated from '@amcharts/amcharts4/themes/animated';
-
+const API = window.location.origin;
 // Apply the animated theme
 am4core.useTheme(am4themes_animated);
 
@@ -18,7 +18,7 @@ const TransportationCostsChart = () => {
     chartRef.current = chart;
 
     // Fetch data from API
-    axios.get('https://leaf-tn20.onrender.com/api/md/transportation-costs')
+    axios.get(`${API}/api/md/transportation-costs`)
       .then(response => {
         console.log('Transportation Costs Data:', response.data); // Debugging line
 

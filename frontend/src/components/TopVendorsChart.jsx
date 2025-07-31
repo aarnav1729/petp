@@ -4,7 +4,7 @@ import React, { useLayoutEffect, useRef } from 'react';
 import axios from 'axios';
 import * as am4core from '@amcharts/amcharts4/core';
 import * as am4charts from '@amcharts/amcharts4/charts';
-
+const API = window.location.origin;
 const TopVendorsChart = () => {
   const chartRef = useRef(null);
 
@@ -12,7 +12,7 @@ const TopVendorsChart = () => {
     let chart = am4core.create('topVendorsChartDiv', am4charts.XYChart);
     chartRef.current = chart;
 
-    axios.get('https://leaf-tn20.onrender.com/api/md/top-vendors')
+    axios.get(`${API}/api/md/top-vendors`)
       .then(response => {
         console.log('Top Vendors Data:', response.data);
 
