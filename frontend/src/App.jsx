@@ -28,7 +28,7 @@ import MDView from "./components/MDView";
 import TFR from "./components/TFR";
 import SalesRFQList from "./components/SalesRFQList";
 import FastagTracking from "./components/FastagTracking";
-
+const API = "https://14.194.111.58:10443";
 const App = () => {
   const [role, setRole] = useState(null);
   const [username, setUsername] = useState("");

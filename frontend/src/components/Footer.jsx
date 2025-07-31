@@ -1,6 +1,6 @@
 import React from "react";
 import Logo from "../assets/pel.png";
-
+const API = "https://14.194.111.58:10443";
 const Footer = () => {
   return (
     <footer className="text-white py-8 mt-8">

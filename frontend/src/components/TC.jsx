@@ -1,7 +1,7 @@
 // src/components/TC.jsx
 
 import React from "react";
-
+const API = "https://14.194.111.58:10443";
 const TC = () => {
   // Define the terms and conditions content
   const termsAndConditionsContent = [

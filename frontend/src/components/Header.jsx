@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Logo from "../assets/it.png";
-
+const API = "https://14.194.111.58:10443";
 const Header = ({ role, onLogout }) => {
   const [openNav, setOpenNav] = useState(false);
   const [scrolled, setScrolled] = useState(false);

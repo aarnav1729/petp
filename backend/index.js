@@ -12,12 +12,12 @@ const { Server } = require("socket.io");
 //const sql = require('mssql');
 const path = require("path");
 const axios = require("axios");
-const ExcelJS = require('exceljs');
-const compression = require("compression"); 
+const ExcelJS = require("exceljs");
+const compression = require("compression");
 
-require('dotenv').config();
-const fs     = require('fs');
-const https  = require('https');
+require("dotenv").config();
+const fs = require("fs");
+const https = require("https");
 
 // outlook emails
 const { Client } = require("@microsoft/microsoft-graph-client");
@@ -63,9 +63,9 @@ const io = new Server(server, {
 });
 
 // middleware
-app.use(cors({ origin: "*" }));        // gzip responses (same as INVEST)
+app.use(cors({ origin: "*" })); // gzip responses (same as INVEST)
 app.use(express.json());
-app.use(compression()); 
+app.use(compression());
 
 //mssql config
 //const config = {
@@ -3463,11 +3463,11 @@ app.get("/api/md/geographical-distribution-by-district", async (req, res) => {
 // RFQNumber | Short Name | Company Type | Customer Name | Number of Vehicles
 // Selected Vendors (CSV) | Freight Cost
 // =============================================================================
-app.get('/api/work', async (req, res) => {
+app.get("/api/work", async (req, res) => {
   try {
     // 1️⃣  Pull every RFQ and its selected vendors
     const rfqs = await RFQ.find()
-      .populate('selectedVendors', 'vendorName')   // only need vendorName
+      .populate("selectedVendors", "vendorName") // only need vendorName
       .lean();
 
     // 2️⃣  Build rows that include freight cost
@@ -3476,7 +3476,7 @@ app.get('/api/work', async (req, res) => {
         // selected vendor names as CSV
         const vendorCsv = (rfq.selectedVendors || [])
           .map((v) => v.vendorName)
-          .join(', ');
+          .join(", ");
 
         // freight cost = Σ (price × trucksAllotted) across all quotes
         const quotes = await Quote.find({ rfqId: rfq._id }).lean();
@@ -3486,46 +3486,46 @@ app.get('/api/work', async (req, res) => {
         );
 
         return {
-          RFQNumber:          rfq.RFQNumber || '',
-          shortName:          rfq.shortName || '',
-          companyType:        rfq.companyType || '',
-          customerName:       rfq.customerName || '',
-          numberOfVehicles:   rfq.numberOfVehicles || 0,
+          RFQNumber: rfq.RFQNumber || "",
+          shortName: rfq.shortName || "",
+          companyType: rfq.companyType || "",
+          customerName: rfq.customerName || "",
+          numberOfVehicles: rfq.numberOfVehicles || 0,
           selectedVendorsCsv: vendorCsv,
-          freightCost
+          freightCost,
         };
       })
     );
 
     // 3️⃣  Create workbook
     const workbook = new ExcelJS.Workbook();
-    const sheet    = workbook.addWorksheet('RFQ Summary');
+    const sheet = workbook.addWorksheet("RFQ Summary");
     sheet.columns = [
-      { header: 'RFQ Number',          key: 'RFQNumber',          width: 15 },
-      { header: 'Short Name',          key: 'shortName',          width: 20 },
-      { header: 'Company Type',        key: 'companyType',        width: 20 },
-      { header: 'Customer Name',       key: 'customerName',       width: 25 },
-      { header: 'Number of Vehicles',  key: 'numberOfVehicles',   width: 18 },
-      { header: 'Selected Vendors',    key: 'selectedVendorsCsv', width: 40 },
-      { header: 'Freight Cost (₹)',    key: 'freightCost',        width: 18 }
+      { header: "RFQ Number", key: "RFQNumber", width: 15 },
+      { header: "Short Name", key: "shortName", width: 20 },
+      { header: "Company Type", key: "companyType", width: 20 },
+      { header: "Customer Name", key: "customerName", width: 25 },
+      { header: "Number of Vehicles", key: "numberOfVehicles", width: 18 },
+      { header: "Selected Vendors", key: "selectedVendorsCsv", width: 40 },
+      { header: "Freight Cost (₹)", key: "freightCost", width: 18 },
     ];
     rows.forEach((r) => sheet.addRow(r));
 
     // 4️⃣  Trigger download
     res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
     res.setHeader(
-      'Content-Disposition',
+      "Content-Disposition",
       'attachment; filename="rfq-summary.xlsx"'
     );
 
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
-    console.error('Error generating RFQ summary Excel:', err);
-    res.status(500).json({ error: 'Failed to generate RFQ summary Excel' });
+    console.error("Error generating RFQ summary Excel:", err);
+    res.status(500).json({ error: "Failed to generate RFQ summary Excel" });
   }
 });
 
@@ -3660,23 +3660,22 @@ app.post("/api/fastag-tracking", async (req, res) => {
   }
 });
 
-
 // GET /api/export.json  → returns JSON
 // GET /api/export.xlsx → prompts download of an Excel file
-app.get('/api/export.:format', async (req, res) => {
+app.get("/api/export.:format", async (req, res) => {
   const { format } = req.params;
   // 1) Fetch whatever data you need. Example: all SalesOrders
   const data = await SalesOrder.find().lean();
 
-  if (format === 'json') {
+  if (format === "json") {
     // simply return JSON
     return res.json(data);
   }
 
-  if (format === 'xlsx') {
+  if (format === "xlsx") {
     // generate Excel
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Export');
+    const sheet = workbook.addWorksheet("Export");
 
     if (data.length) {
       // define columns from object keys
@@ -3691,13 +3690,10 @@ app.get('/api/export.:format', async (req, res) => {
 
     // set headers to trigger download
     res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename="export.xlsx"'
-    );
+    res.setHeader("Content-Disposition", 'attachment; filename="export.xlsx"');
 
     // write workbook to the response stream
     await workbook.xlsx.write(res);
@@ -3705,91 +3701,224 @@ app.get('/api/export.:format', async (req, res) => {
   }
 
   // unsupported format
-  res.status(400).send('Invalid format. Use .json or .xlsx');
+  res.status(400).send("Invalid format. Use .json or .xlsx");
 });
-
 
 // ====================== Exclude List ======================
 const excludedRFQNumbers = [
-  'RFQ2','RFQ3','RFQ4','RFQ5','RFQ7','RFQ8','RFQ19','RFQ20','RFQ25','RFQ26',
-  'RFQ27','RFQ28','RFQ29','RFQ30','RFQ31','RFQ32','RFQ34','RFQ36','RFQ38','RFQ39',
-  'RFQ40','RFQ41','RFQ42','RFQ43','RFQ44','RFQ45','RFQ46','RFQ47','RFQ48','RFQ50',
-  'RFQ51','RFQ52','RFQ53','RFQ54','RFQ55','RFQ64','RFQ75','RFQ87','RFQ89','RFQ94',
-  'RFQ96','RFQ102','RFQ103','RFQ104','RFQ106','RFQ107','RFQ116','RFQ124','RFQ128',
-  'RFQ138','RFQ141','RFQ142','RFQ144','RFQ145','RFQ146','RFQ149','RFQ150','RFQ153',
-  'RFQ155','RFQ157','RFQ167','RFQ174','RFQ190','RFQ192','RFQ206','RFQ212','RFQ217',
-  'RFQ229','RFQ257','RFQ258','RFQ259','RFQ267','RFQ270','RFQ274','RFQ281','RFQ296',
-  'RFQ298','RFQ310','RFQ311','RFQ326','RFQ327','RFQ329','RFQ330','RFQ334','RFQ344',
-  'RFQ347','RFQ350','RFQ359','RFQ360','RFQ361','RFQ362','RFQ363','RFQ364','RFQ365',
-  'RFQ366','RFQ367','RFQ374','RFQ375','RFQ377','RFQ378','RFQ379','RFQ383','RFQ390',
-  'RFQ400','RFQ401','RFQ402','RFQ403','RFQ404','RFQ410','RFQ412','RFQ424','RFQ431',
-  'RFQ434','RFQ440','RFQ441','RFQ446','RFQ447','RFQ451','RFQ452','RFQ469','RFQ475',
-  'RFQ488','RFQ493','RFQ509','RFQ513','RFQ520','RFQ523','RFQ524','RFQ528','RFQ529',
-  'RFQ532','RFQ537','RFQ545','RFQ546','RFQ562','RFQ563','RFQ564','RFQ567','RFQ568',
-  'RFQ569','RFQ571','RFQ574','RFQ576','RFQ584','RFQ605','RFQ606','RFQ622','RFQ631',
-  'RFQ639'
+  "RFQ2",
+  "RFQ3",
+  "RFQ4",
+  "RFQ5",
+  "RFQ7",
+  "RFQ8",
+  "RFQ19",
+  "RFQ20",
+  "RFQ25",
+  "RFQ26",
+  "RFQ27",
+  "RFQ28",
+  "RFQ29",
+  "RFQ30",
+  "RFQ31",
+  "RFQ32",
+  "RFQ34",
+  "RFQ36",
+  "RFQ38",
+  "RFQ39",
+  "RFQ40",
+  "RFQ41",
+  "RFQ42",
+  "RFQ43",
+  "RFQ44",
+  "RFQ45",
+  "RFQ46",
+  "RFQ47",
+  "RFQ48",
+  "RFQ50",
+  "RFQ51",
+  "RFQ52",
+  "RFQ53",
+  "RFQ54",
+  "RFQ55",
+  "RFQ64",
+  "RFQ75",
+  "RFQ87",
+  "RFQ89",
+  "RFQ94",
+  "RFQ96",
+  "RFQ102",
+  "RFQ103",
+  "RFQ104",
+  "RFQ106",
+  "RFQ107",
+  "RFQ116",
+  "RFQ124",
+  "RFQ128",
+  "RFQ138",
+  "RFQ141",
+  "RFQ142",
+  "RFQ144",
+  "RFQ145",
+  "RFQ146",
+  "RFQ149",
+  "RFQ150",
+  "RFQ153",
+  "RFQ155",
+  "RFQ157",
+  "RFQ167",
+  "RFQ174",
+  "RFQ190",
+  "RFQ192",
+  "RFQ206",
+  "RFQ212",
+  "RFQ217",
+  "RFQ229",
+  "RFQ257",
+  "RFQ258",
+  "RFQ259",
+  "RFQ267",
+  "RFQ270",
+  "RFQ274",
+  "RFQ281",
+  "RFQ296",
+  "RFQ298",
+  "RFQ310",
+  "RFQ311",
+  "RFQ326",
+  "RFQ327",
+  "RFQ329",
+  "RFQ330",
+  "RFQ334",
+  "RFQ344",
+  "RFQ347",
+  "RFQ350",
+  "RFQ359",
+  "RFQ360",
+  "RFQ361",
+  "RFQ362",
+  "RFQ363",
+  "RFQ364",
+  "RFQ365",
+  "RFQ366",
+  "RFQ367",
+  "RFQ374",
+  "RFQ375",
+  "RFQ377",
+  "RFQ378",
+  "RFQ379",
+  "RFQ383",
+  "RFQ390",
+  "RFQ400",
+  "RFQ401",
+  "RFQ402",
+  "RFQ403",
+  "RFQ404",
+  "RFQ410",
+  "RFQ412",
+  "RFQ424",
+  "RFQ431",
+  "RFQ434",
+  "RFQ440",
+  "RFQ441",
+  "RFQ446",
+  "RFQ447",
+  "RFQ451",
+  "RFQ452",
+  "RFQ469",
+  "RFQ475",
+  "RFQ488",
+  "RFQ493",
+  "RFQ509",
+  "RFQ513",
+  "RFQ520",
+  "RFQ523",
+  "RFQ524",
+  "RFQ528",
+  "RFQ529",
+  "RFQ532",
+  "RFQ537",
+  "RFQ545",
+  "RFQ546",
+  "RFQ562",
+  "RFQ563",
+  "RFQ564",
+  "RFQ567",
+  "RFQ568",
+  "RFQ569",
+  "RFQ571",
+  "RFQ574",
+  "RFQ576",
+  "RFQ584",
+  "RFQ605",
+  "RFQ606",
+  "RFQ622",
+  "RFQ631",
+  "RFQ639",
 ];
 
 // =================== Freight Costs Endpoint ===================
 // GET /api/freight-costs.json  → returns JSON
 // GET /api/freight-costs.xlsx → downloads an Excel file
-app.get('/api/freight-costs.:format', async (req, res) => {
+app.get("/api/freight-costs.:format", async (req, res) => {
   try {
     const { format } = req.params;
 
     // 1) Fetch all RFQs except the excluded ones
     const rfqs = await RFQ.find({
-      RFQNumber: { $nin: excludedRFQNumbers }
+      RFQNumber: { $nin: excludedRFQNumbers },
     }).lean();
 
     // 2) Compute rows
-    const rows = await Promise.all(rfqs.map(async (rfq) => {
-      const quotes = await Quote.find({ rfqId: rfq._id }).lean();
-      const freightCost = quotes.reduce(
-        (sum, q) => sum + (q.price || 0) * (q.trucksAllotted || 0),
-        0
-      );
-      const truckCount = quotes.reduce(
-        (sum, q) => sum + (q.trucksAllotted || 0),
-        0
-      );
-      const pricePerTruck = truckCount > 0 ? freightCost / truckCount : 0;
-      const priceDiv251100 = pricePerTruck / 251100;
-      return {
-        rfqNumber: rfq.RFQNumber || '',
-        state:     rfq.dropLocationState || 'Unknown',
-        freightCost,
-        truckCount,
-        pricePerTruck,
-        priceDiv251100
-      };
-    }));
+    const rows = await Promise.all(
+      rfqs.map(async (rfq) => {
+        const quotes = await Quote.find({ rfqId: rfq._id }).lean();
+        const freightCost = quotes.reduce(
+          (sum, q) => sum + (q.price || 0) * (q.trucksAllotted || 0),
+          0
+        );
+        const truckCount = quotes.reduce(
+          (sum, q) => sum + (q.trucksAllotted || 0),
+          0
+        );
+        const pricePerTruck = truckCount > 0 ? freightCost / truckCount : 0;
+        const priceDiv251100 = pricePerTruck / 251100;
+        return {
+          rfqNumber: rfq.RFQNumber || "",
+          state: rfq.dropLocationState || "Unknown",
+          freightCost,
+          truckCount,
+          pricePerTruck,
+          priceDiv251100,
+        };
+      })
+    );
 
     // 2a) Sort descending by priceDiv251100
     rows.sort((a, b) => b.priceDiv251100 - a.priceDiv251100);
 
     // 3) JSON or Excel output
-    if (format === 'json') {
+    if (format === "json") {
       return res.json(rows);
     }
-    if (format === 'xlsx') {
+    if (format === "xlsx") {
       const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet('Freight Costs');
+      const sheet = workbook.addWorksheet("Freight Costs");
       sheet.columns = [
-        { header: 'RFQ Number',      key: 'rfqNumber',      width: 15 },
-        { header: 'State',           key: 'state',          width: 20 },
-        { header: 'Freight Cost',    key: 'freightCost',    width: 15 },
-        { header: 'Truck Count',     key: 'truckCount',     width: 12 },
-        { header: 'Price per Truck', key: 'pricePerTruck',  width: 15 },
-        { header: 'Price / 251100',  key: 'priceDiv251100', width: 18 },
+        { header: "RFQ Number", key: "rfqNumber", width: 15 },
+        { header: "State", key: "state", width: 20 },
+        { header: "Freight Cost", key: "freightCost", width: 15 },
+        { header: "Truck Count", key: "truckCount", width: 12 },
+        { header: "Price per Truck", key: "pricePerTruck", width: 15 },
+        { header: "Price / 251100", key: "priceDiv251100", width: 18 },
       ];
-      rows.forEach(r => sheet.addRow(r));
+      rows.forEach((r) => sheet.addRow(r));
       res.setHeader(
-        'Content-Type',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
       res.setHeader(
-        'Content-Disposition',
+        "Content-Disposition",
         'attachment; filename="freight-costs.xlsx"'
       );
       await workbook.xlsx.write(res);
@@ -3797,10 +3926,10 @@ app.get('/api/freight-costs.:format', async (req, res) => {
     }
 
     // unsupported format
-    res.status(400).send('Invalid format. Use .json or .xlsx');
+    res.status(400).send("Invalid format. Use .json or .xlsx");
   } catch (err) {
-    console.error('Error generating freight-costs export:', err);
-    res.status(500).json({ error: 'Failed to export freight costs' });
+    console.error("Error generating freight-costs export:", err);
+    res.status(500).json({ error: "Failed to export freight costs" });
   }
 });
 
@@ -3808,44 +3937,46 @@ app.get('/api/freight-costs.:format', async (req, res) => {
 async function buildFreightWorkbook() {
   // Fetch RFQs except the excluded ones
   const rfqs = await RFQ.find({
-    RFQNumber: { $nin: excludedRFQNumbers }
+    RFQNumber: { $nin: excludedRFQNumbers },
   }).lean();
 
   // Build detail rows
-  const detailRows = await Promise.all(rfqs.map(async (rfq) => {
-    const quotes = await Quote.find({ rfqId: rfq._id }).lean();
-    const freightCost = quotes.reduce(
-      (sum, q) => sum + (q.price || 0) * (q.trucksAllotted || 0),
-      0
-    );
-    if (!freightCost) return null;  // skip zero‐cost RFQs
-    const truckCount = quotes.reduce(
-      (sum, q) => sum + (q.trucksAllotted || 0),
-      0
-    );
-    const pricePerTruck = truckCount ? freightCost / truckCount : 0;
-    const priceDiv251100 = pricePerTruck / 251100;
-    return {
-      rfqNumber:     rfq.RFQNumber || '',
-      state:         rfq.dropLocationState || 'Unknown',
-      freightCost,
-      truckCount,
-      pricePerTruck,
-      priceDiv251100
-    };
-  }));
-  const filteredDetails = detailRows.filter(r => r);
+  const detailRows = await Promise.all(
+    rfqs.map(async (rfq) => {
+      const quotes = await Quote.find({ rfqId: rfq._id }).lean();
+      const freightCost = quotes.reduce(
+        (sum, q) => sum + (q.price || 0) * (q.trucksAllotted || 0),
+        0
+      );
+      if (!freightCost) return null; // skip zero‐cost RFQs
+      const truckCount = quotes.reduce(
+        (sum, q) => sum + (q.trucksAllotted || 0),
+        0
+      );
+      const pricePerTruck = truckCount ? freightCost / truckCount : 0;
+      const priceDiv251100 = pricePerTruck / 251100;
+      return {
+        rfqNumber: rfq.RFQNumber || "",
+        state: rfq.dropLocationState || "Unknown",
+        freightCost,
+        truckCount,
+        pricePerTruck,
+        priceDiv251100,
+      };
+    })
+  );
+  const filteredDetails = detailRows.filter((r) => r);
   // sort detail sheet descending by priceDiv251100
   filteredDetails.sort((a, b) => b.priceDiv251100 - a.priceDiv251100);
 
   // Pivot: average INR/Wp by state
   const byState = {};
-  filteredDetails.forEach(r => {
+  filteredDetails.forEach((r) => {
     (byState[r.state] = byState[r.state] || []).push(r.priceDiv251100);
   });
-  let pivot = Object.entries(byState).map(([ state, arr ]) => ({
+  let pivot = Object.entries(byState).map(([state, arr]) => ({
     state,
-    avgINRperWp: arr.reduce((a, b) => a + b, 0) / arr.length
+    avgINRperWp: arr.reduce((a, b) => a + b, 0) / arr.length,
   }));
   // sort pivot descending
   pivot.sort((a, b) => b.avgINRperWp - a.avgINRperWp);
@@ -3853,29 +3984,29 @@ async function buildFreightWorkbook() {
   const overallAvg =
     pivot.reduce((sum, p) => sum + p.avgINRperWp, 0) / pivot.length;
   // append overall average row
-  pivot.push({ state: 'Overall Average', avgINRperWp: overallAvg });
+  pivot.push({ state: "Overall Average", avgINRperWp: overallAvg });
 
   // build workbook
   const wb = new ExcelJS.Workbook();
   // sheet1: detail
   const sheet1 = wb.addWorksheet("Freight Costs");
   sheet1.columns = [
-    { header: "RFQ Number",   key: "rfqNumber",      width: 15 },
-    { header: "State",        key: "state",          width: 20 },
-    { header: "Freight Cost", key: "freightCost",    width: 15 },
-    { header: "Truck Count",  key: "truckCount",     width: 12 },
-    { header: "Price/Truck",  key: "pricePerTruck",  width: 15 },
-    { header: "INR/Wp",       key: "priceDiv251100", width: 12 },
+    { header: "RFQ Number", key: "rfqNumber", width: 15 },
+    { header: "State", key: "state", width: 20 },
+    { header: "Freight Cost", key: "freightCost", width: 15 },
+    { header: "Truck Count", key: "truckCount", width: 12 },
+    { header: "Price/Truck", key: "pricePerTruck", width: 15 },
+    { header: "INR/Wp", key: "priceDiv251100", width: 12 },
   ];
-  filteredDetails.forEach(r => sheet1.addRow(r));
+  filteredDetails.forEach((r) => sheet1.addRow(r));
 
   // sheet2: pivot + overall
   const sheet2 = wb.addWorksheet("Avg INR-per-Wp");
   sheet2.columns = [
-    { header: "State",      key: "state",      width: 20 },
+    { header: "State", key: "state", width: 20 },
     { header: "Avg INR/Wp", key: "avgINRperWp", width: 15 },
   ];
-  pivot.forEach(p => sheet2.addRow(p));
+  pivot.forEach((p) => sheet2.addRow(p));
 
   return { wb, pivot };
 }
@@ -3887,19 +4018,23 @@ async function sendWeeklyFreight() {
   const base64 = buffer.toString("base64");
 
   // separate out overall average from pivot (last entry)
-  const overall = pivot.find(p => p.state === 'Overall Average');
-  const statesOnly = pivot.filter(p => p.state !== 'Overall Average');
+  const overall = pivot.find((p) => p.state === "Overall Average");
+  const statesOnly = pivot.filter((p) => p.state !== "Overall Average");
 
   // build HTML table, sorted descending
-  const htmlRows = statesOnly.map(p =>
-    `<tr><td>${p.state}</td><td>${p.avgINRperWp.toFixed(4)}</td></tr>`
-  ).join("");
+  const htmlRows = statesOnly
+    .map(
+      (p) => `<tr><td>${p.state}</td><td>${p.avgINRperWp.toFixed(4)}</td></tr>`
+    )
+    .join("");
   const table = `
     <table border="1" cellpadding="5">
       <thead><tr><th>State</th><th>Avg INR/Wp</th></tr></thead>
       <tbody>
         ${htmlRows}
-        <tr><th>Overall Average</th><th>${overall.avgINRperWp.toFixed(4)}</th></tr>
+        <tr><th>Overall Average</th><th>${overall.avgINRperWp.toFixed(
+          4
+        )}</th></tr>
       </tbody>
     </table>`;
 
@@ -3911,21 +4046,21 @@ async function sendWeeklyFreight() {
         <p><strong>Overall Average INR/Wp across all states:</strong>
            ${overall.avgINRperWp.toFixed(4)}</p>
         <p>Below is the state-wise Avg INR/Wp (descending):</p>
-        ${table}`
+        ${table}`,
     },
     toRecipients: [
       { emailAddress: { address: "aarnav.singh@premierenergies.com" } },
       { emailAddress: { address: "saumya.ranjan@premierenergies.com" } },
       { emailAddress: { address: "saisathvika.v@premierenergies.com" } },
-      { emailAddress: { address: "sivabala.sm@premierenergies.com" } }
+      { emailAddress: { address: "sivabala.sm@premierenergies.com" } },
     ],
     attachments: [
       {
         "@odata.type": "#microsoft.graph.fileAttachment",
         name: "freight-costs-weekly.xlsx",
-        contentBytes: base64
-      }
-    ]
+        contentBytes: base64,
+      },
+    ],
   };
 
   await client.api(`/users/${SENDER_EMAIL}/sendMail`).post({ message });
@@ -3938,22 +4073,111 @@ app.get("/api/freight-costs/send-weekly", async (req, res) => {
     await sendWeeklyFreight();
 
     // schedule for every Sunday at 23:59 IST
-    cron.schedule(
-      "59 23 * * 0",
-      sendWeeklyFreight,
-      { timezone: "Asia/Kolkata" }
-    );
+    cron.schedule("59 23 * * 0", sendWeeklyFreight, {
+      timezone: "Asia/Kolkata",
+    });
 
     return res.json({
       message:
-        "Report sent immediately, and scheduled weekly on Sundays at 23:59 IST."
+        "Report sent immediately, and scheduled weekly on Sundays at 23:59 IST.",
     });
   } catch (err) {
     console.error("Error in /api/freight-costs/send-weekly:", err);
     return res.status(500).json({
-      error: "Failed to send and schedule weekly freight-cost report."
+      error: "Failed to send and schedule weekly freight-cost report.",
     });
   }
+});
+
+/* ------------------------------------------------------------------ */
+/*  📧  URL-change e-mail helper + handler                            */
+/* ------------------------------------------------------------------ */
+
+/* 1️⃣  Beautifully-formatted HTML template                            */
+function buildUrlChangeEmailHTML(username) {
+  return `
+  <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, sans-serif; color:#333;">
+    <tr>
+      <td style="background:#006043;padding:24px 32px;">
+        <h1 style="margin:0;color:#fff;font-size:24px;">LEAF Portal – Important Update</h1>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:24px 32px;">
+        <p style="font-size:16px;margin:0 0 16px;">Hi ${username},</p>
+        <p style="font-size:16px;margin:0 0 16px;">
+          We’ve moved the LEAF portal to a new, more secure address&nbsp;👇
+        </p>
+        <p style="font-size:18px;margin:0 0 24px;">
+          <a href="https://leaf.premierenergies.com:10443/" style="color:#006043;text-decoration:none;font-weight:bold;">
+            https://leaf.premierenergies.com:10443/
+          </a>
+        </p>
+        <p style="font-size:16px;margin:0 0 8px;">
+          Please update your bookmarks and start using this URL immediately.
+        </p>
+        <p style="font-size:16px;margin:32px 0 0;">
+          Thanks &amp; Regards,<br/>
+          <strong>Team LEAF</strong>
+        </p>
+      </td>
+    </tr>
+  </table>`;
+}
+
+/* 2️⃣  The shared handler — fires on every GET *or* POST to /api/notify-url-change */
+async function notifyUrlChangeHandler(req, res) {
+  try {
+    // Pull every user’s username + e-mail
+    const users = await User.find({}, "username email").lean();
+    if (!users.length) {
+      return res.status(200).json({ message: "No users found to notify." });
+    }
+
+    // Send the message to each user
+    for (const { username, email } of users) {
+      const emailContent = {
+        message: {
+          subject: "LEAF portal has a NEW home – please update your bookmark",
+          body: {
+            contentType: "HTML",
+            content: buildUrlChangeEmailHTML(username),
+          },
+          toRecipients: [{ emailAddress: { address: email } }],
+          from:       { emailAddress: { address: SENDER_EMAIL } },
+        },
+      };
+      await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
+    }
+
+    return res
+      .status(200)
+      .json({ message: `✅  ${users.length} user(s) notified successfully.` });
+  } catch (err) {
+    console.error("Error sending URL-change emails:", err);
+    return res
+      .status(500)
+      .json({ error: "Failed to dispatch URL-change emails" });
+  }
+}
+
+// 3️⃣  Wire it up for both GET and POST
+app.get("/api/notify-url-change", notifyUrlChangeHandler);
+app.post("/api/notify-url-change", notifyUrlChangeHandler);
+
+
+/* ------------------------------------------------------------------ */
+/* Static SPA – serve the built frontend on the *same* port           */
+/* ------------------------------------------------------------------ */
+const distDir = path.join(__dirname, "dist");
+const indexHtml = path.join(distDir, "index.html");
+
+app.use(express.static(distDir)); // ➊ serve JS/CSS/assets
+
+// ➋ anything that isn’t /api/* falls back to index.html (HTML5 history mode)
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) return next();
+  res.sendFile(indexHtml);
 });
 
 const httpsOptions = {
@@ -3969,7 +4193,7 @@ const httpsOptions = {
 };
 
 // start server
-const PORT = process.env.PORT || 10443;   // already correct
+const PORT = process.env.PORT || 10443; // already correct
 const HOST = process.env.HOST || "0.0.0.0"; // 🔹 add if you need external bind
 
 async function start() {

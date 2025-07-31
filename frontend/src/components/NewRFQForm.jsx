@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import PropTypes from "prop-types";  // Import PropTypes
+import PropTypes from "prop-types"; // Import PropTypes
 const API = "https://14.194.111.58:10443";
+
 const NewRFQForm = ({ overrideFlag }) => {
   const [formData, setFormData] = useState({
     RFQNumber: "",
@@ -814,9 +815,7 @@ const NewRFQForm = ({ overrideFlag }) => {
   const fetchNextRFQNumber = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(
-        `${API}/api/next-rfq-number`
-      );
+      const response = await axios.get(`${API}/api/next-rfq-number`);
       setFormData((prevData) => ({
         ...prevData,
         RFQNumber: response.data.RFQNumber,
@@ -840,18 +839,14 @@ const NewRFQForm = ({ overrideFlag }) => {
     }
   };
 
-
   useEffect(() => {
     // Log to verify that overrideFlag is updated properly
     console.log("Override Flag in SalesOrders.jsx:", overrideFlag);
   }, [overrideFlag]);
 
-
   const fetchSalesOrders = async () => {
     try {
-      const response = await axios.get(
-        `${API}/api/sales/orders`
-      );
+      const response = await axios.get(`${API}/api/sales/orders`);
       setSalesOrders(response.data);
     } catch (error) {
       console.error("Error fetching sales orders:", error);
@@ -883,7 +878,7 @@ const NewRFQForm = ({ overrideFlag }) => {
 
     if (name === "projectCode") {
       // Log overrideFlag when the projectCode dropdown is changed
-      console.log('Override Flag for selected Project Code:', overrideFlag);
+      console.log("Override Flag for selected Project Code:", overrideFlag);
     }
 
     if (name === "dropLocationState") {
@@ -954,7 +949,7 @@ const NewRFQForm = ({ overrideFlag }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     if (formData.itemType === "Others" && !formData.customItemType.trim()) {
       alert("Please specify the Item Type.");
       return;
@@ -979,9 +974,9 @@ const NewRFQForm = ({ overrideFlag }) => {
       );
       return;
     }
-  
+
     setIsLoading(true);
-  
+
     try {
       // Check if overrideFlag is not true, proceed with MW check
       if (!formData.overrideFlag) {
@@ -989,10 +984,10 @@ const NewRFQForm = ({ overrideFlag }) => {
           // Call the API to check remaining MW
           const salesOrderRes = await axios.get(
             `${API}/api/sales/orders/${formData.projectCode}/remaining-mw?override=${formData.overrideFlag}`
-          );
+          ); //
           const remainingMW = Number(salesOrderRes.data.remainingMW);
           const rfqMW = Number(formData.mw);
-  
+
           // If RFQ MW exceeds remaining MW, show an alert and prevent submission
           if (rfqMW > remainingMW) {
             alert(
@@ -1008,7 +1003,7 @@ const NewRFQForm = ({ overrideFlag }) => {
           return;
         }
       }
-  
+
       const dataToSend = {
         ...formData,
         selectedVendors,
@@ -1026,16 +1021,16 @@ const NewRFQForm = ({ overrideFlag }) => {
             ? formData.customVehicleType
             : formData.vehicleType,
       };
-  
+
       delete dataToSend.customItemType;
       delete dataToSend.customVehicleType;
-  
-      const response = await axios.post(
-        `${API}/api/rfq`,
-        dataToSend
-      );
-  
-      if (response.status === 201 && response.data.message === "RFQ created and email sent successfully") {
+
+      const response = await axios.post(`${API}/api/rfq`, dataToSend);
+
+      if (
+        response.status === 201 &&
+        response.data.message === "RFQ created and email sent successfully"
+      ) {
         alert("RFQ submitted successfully!");
         setFormData({
           RFQNumber: "",
@@ -1085,7 +1080,6 @@ const NewRFQForm = ({ overrideFlag }) => {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="container mx-auto mt-8 px-4 py-6 bg-transparent text-black rounded-lg shadow-lg border border-black">
@@ -1674,7 +1668,7 @@ const NewRFQForm = ({ overrideFlag }) => {
 
 // Add PropTypes validation for overrideFlag
 NewRFQForm.propTypes = {
-  overrideFlag: PropTypes.bool.isRequired,  // Validate that overrideFlag is a required boolean
+  overrideFlag: PropTypes.bool.isRequired, // Validate that overrideFlag is a required boolean
 };
 
 export default NewRFQForm;

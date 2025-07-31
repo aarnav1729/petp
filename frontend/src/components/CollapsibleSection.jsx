@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import './CollapsibleSection.css';
-
+const API = "https://14.194.111.58:10443";
 const CollapsibleSection = ({ title, description, isOpen, onToggle, children }) => {
   const contentRef = useRef(null);
 
