@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-const API = "https://14.194.111.58:10443";
+const API = window.location.origin;
 const FastagTracking = () => {
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [responseData, setResponseData] = useState(null);

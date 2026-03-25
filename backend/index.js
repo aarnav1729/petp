@@ -151,12 +151,30 @@ mongoose
     {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 45000,
+
+      // More tolerant of slow networks / failover
+      serverSelectionTimeoutMS: 60000, // was 30000
+      socketTimeoutMS: 120000, // was 45000
+      connectTimeoutMS: 20000,
+
+      // Prefer IPv4 on hosts where IPv6 can stall
+      family: 4,
+
+      // Gracefully retire very idle sockets on the server
+      maxIdleTimeMS: 60000,
     }
   )
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
+mongoose.connection.on("error", (err) => {
+  console.error("[Mongo] connection error:", err?.message || err);
+});
+mongoose.connection.on("disconnected", () => {
+  console.error("[Mongo] disconnected");
+});
+mongoose.connection.on("reconnected", () => {
+  console.log("[Mongo] reconnected");
+});
 
 // function to send email on rfq creation
 async function sendRFQEmail(rfqData, selectedVendorIds) {
@@ -452,6 +470,18 @@ const lrNumberSchema = new mongoose.Schema({
 });
 
 const LRNumber = mongoose.model("LRNumber", lrNumberSchema);
+
+// RFQs
+rfqSchema.index({ createdAt: -1 }); // list newest
+
+rfqSchema.index({ selectedVendors: 1, _id: -1 }); // vendor list
+rfqSchema.index({ status: 1, initialQuoteEndTime: 1 }); // cron transition
+rfqSchema.index({ status: 1, evaluationEndTime: 1 }); // cron transition
+
+// Quotes
+quoteSchema.index({ rfqId: 1, createdAt: -1 });
+quoteSchema.index({ rfqId: 1, price: 1 });
+quoteSchema.index({ vendorName: 1, rfqId: 1 });
 
 // api endpoints
 
@@ -1037,26 +1067,26 @@ app.post("/api/register", async (req, res) => {
 });
 
 // endpoint to check and return vendor specific rfqs
-app.get("/api/rfqs/vendor/:username", async (req, res) => {
-  const { username } = req.params;
-  try {
-    // Find the vendor's _id using username
-    const vendor = await Vendor.findOne({ username });
-    if (!vendor) {
-      return res.status(404).json({ error: "Vendor not found" });
-    }
+//app.get("/api/rfqs/vendor/:username", async (req, res) => {
+//const { username } = req.params;
+//try {
+// Find the vendor's _id using username
+//const vendor = await Vendor.findOne({ username });
+//if (!vendor) {
+//return res.status(404).json({ error: "Vendor not found" });
+//}
 
-    // Query RFQs where selectedVendors includes vendor._id
-    const rfqs = await RFQ.find({
-      selectedVendors: vendor._id,
-    });
+// Query RFQs where selectedVendors includes vendor._id
+//const rfqs = await RFQ.find({
+//selectedVendors: vendor._id,
+//});
 
-    res.status(200).json(rfqs);
-  } catch (error) {
-    console.error("Error fetching RFQs for vendor:", error);
-    res.status(500).json({ error: "Failed to fetch RFQs for vendor" });
-  }
-});
+//res.status(200).json(rfqs);
+//} catch (error) {
+//console.error("Error fetching RFQs for vendor:", error);
+//res.status(500).json({ error: "Failed to fetch RFQs for vendor" });
+//}
+//});
 
 // endpoint for adding a vendor from VendorList.jsx
 app.post("/api/add-vendor", async (req, res) => {
@@ -1229,13 +1259,190 @@ app.post("/api/rfq", async (req, res) => {
 });
 
 // endpoint for fetching all RFQs
+// endpoint for fetching the most recent RFQs (last 50)
+// GET /api/rfqs?cursor=<last_id>
+// GET /api/rfqs?cursor=<last_id>&limit=50
+// ===================== OPTIMIZED RFQs ENDPOINT WITH SERVER-SIDE PAGINATION =====================
+// ===================== OPTIMIZED RFQs ENDPOINT WITH SERVER-SIDE PAGINATION =====================
 app.get("/api/rfqs", async (req, res) => {
   try {
-    const rfqs = await RFQ.find();
-    res.status(200).json(rfqs);
-  } catch (error) {
-    console.error("Error fetching RFQs:", error);
-    res.status(500).json({ error: "Failed to fetch RFQs" });
+    // Get pagination parameters from query string with defaults
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
+    const search = req.query.search || "";
+    const status = req.query.status || "";
+
+    // Calculate skip value
+    const skip = (page - 1) * limit;
+
+    // Build filter object
+    const filter = {};
+
+    // Add status filter if provided
+    if (status && status.trim() !== "") {
+      filter.status = status.toLowerCase();
+    }
+
+    // Add search filter if provided
+    if (search && search.trim() !== "") {
+      // Create a text search across multiple fields
+      filter.$or = [
+        { RFQNumber: { $regex: search, $options: "i" } },
+        { shortName: { $regex: search, $options: "i" } },
+        { customerName: { $regex: search, $options: "i" } },
+        { originLocation: { $regex: search, $options: "i" } },
+        { dropLocationState: { $regex: search, $options: "i" } },
+        { dropLocationDistrict: { $regex: search, $options: "i" } },
+        { vehicleType: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Execute count query first to get total count
+    const totalCount = await RFQ.countDocuments(filter);
+
+    // Then fetch paginated data
+    const rfqs = await RFQ.find(filter)
+      .sort({ createdAt: -1 }) // Sort by newest first
+      .skip(skip)
+      .limit(limit)
+      .lean(); // Use lean() for better performance
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Ensure we always return an array for data
+    const data = Array.isArray(rfqs) ? rfqs : [];
+
+    // Return response with data and pagination metadata
+    res.status(200).json({
+      success: true,
+      data: data,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages || 1,
+        totalCount: totalCount || 0,
+        limit: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (err) {
+    console.error("GET /api/rfqs failed:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch RFQs",
+      data: [],
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalCount: 0,
+        limit: 10,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
+    });
+  }
+});
+
+// ===================== VENDOR RFQs ENDPOINT WITH SERVER-SIDE PAGINATION =====================
+// ===================== VENDOR RFQs ENDPOINT WITH SERVER-SIDE PAGINATION =====================
+// DELETE the old endpoint at lines ~1035-1049 and keep only this one
+app.get("/api/rfqs/vendor/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    // Get pagination parameters from query string with defaults
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
+    const search = req.query.search || "";
+    const status = req.query.status || "";
+
+    // Calculate skip value
+    const skip = (page - 1) * limit;
+
+    // Find the vendor by username
+    const vendor = await Vendor.findOne({ vendorName: username });
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        error: "Vendor not found",
+        data: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 1,
+          totalCount: 0,
+          limit: limit,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
+      });
+    }
+
+    // Build filter object
+    const filter = { selectedVendors: vendor._id };
+
+    // Add status filter if provided
+    if (status && status.trim() !== "") {
+      filter.status = status.toLowerCase();
+    }
+
+    // Add search filter if provided
+    if (search && search.trim() !== "") {
+      filter.$or = [
+        { RFQNumber: { $regex: search, $options: "i" } },
+        { shortName: { $regex: search, $options: "i" } },
+        { customerName: { $regex: search, $options: "i" } },
+        { originLocation: { $regex: search, $options: "i" } },
+        { dropLocationState: { $regex: search, $options: "i" } },
+        { dropLocationDistrict: { $regex: search, $options: "i" } },
+        { vehicleType: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Execute count query first to get total count
+    const totalCount = await RFQ.countDocuments(filter);
+
+    // Then fetch paginated data
+    const rfqs = await RFQ.find(filter)
+      .sort({ createdAt: -1 }) // Sort by newest first
+      .skip(skip)
+      .limit(limit)
+      .lean(); // Use lean() for better performance
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Ensure we always return an array for data
+    const data = Array.isArray(rfqs) ? rfqs : [];
+
+    // Return response with data and pagination metadata
+    res.status(200).json({
+      success: true,
+      data: data,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages || 1,
+        totalCount: totalCount || 0,
+        limit: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (err) {
+    console.error("GET /api/rfqs/vendor/:username failed:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch vendor RFQs",
+      data: [],
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalCount: 0,
+        limit: 10,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
+    });
   }
 });
 
@@ -2099,6 +2306,7 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
       JSON.stringify(leafAllocData) === JSON.stringify(logisticsAllocData);
 
     // If there is a mismatch, send email to specified addresses
+    // If there is a mismatch, send email to specified addresses
     if (!isIdentical) {
       // Compute Total LEAF Price and Total Logistics Price
       const totalLeafPrice = leafAllocation.reduce(
@@ -2110,52 +2318,86 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
         0
       );
 
-      // Prepare tables for email
-      const generateTableHTML = (allocations, title) => {
-        let tableRows = allocations
-          .map(
-            (alloc) => `
-          <tr>
-            <td>${alloc.vendorName}</td>
-            <td>${alloc.price}</td>
-            <td>${alloc.trucksAllotted}</td>
-            <td>${alloc.label}</td>
-          </tr>
-        `
-          )
-          .join("");
+      // Single comparison table: LEAF vs Logistics per vendor
+      const generateComparisonTableHTML = (
+        leafAllocation,
+        logisticsAllocation
+      ) => {
+        const leafByVendor = new Map();
+        const logisticsByVendor = new Map();
+
+        leafAllocation.forEach((alloc) =>
+          leafByVendor.set(alloc.vendorName, alloc)
+        );
+        logisticsAllocation.forEach((alloc) =>
+          logisticsByVendor.set(alloc.vendorName, alloc)
+        );
+
+        const allVendors = new Set([
+          ...leafAllocation.map((a) => a.vendorName),
+          ...logisticsAllocation.map((a) => a.vendorName),
+        ]);
+
+        const rows = [];
+        allVendors.forEach((vendorName) => {
+          const leaf = leafByVendor.get(vendorName) || {};
+          const log = logisticsByVendor.get(vendorName) || {};
+
+          rows.push(`
+                <tr>
+                  <td>${esc(vendorName)}</td>
+                  <td>${leaf.price ?? "-"}</td>
+                  <td>${leaf.trucksAllotted ?? "-"}</td>
+                  <td>${leaf.label ?? "-"}</td>
+                  <td>${log.price ?? "-"}</td>
+                  <td>${log.trucksAllotted ?? "-"}</td>
+                  <td>${log.label ?? "-"}</td>
+                </tr>
+              `);
+        });
 
         return `
-          <h3>${title}</h3>
-          <table border="1" cellpadding="5" cellspacing="0">
-            <thead>
-              <tr>
-                <th>Vendor Name</th>
-                <th>Price</th>
-                <th>Trucks Allotted</th>
-                <th>Label</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-            </tbody>
-          </table>
-        `;
+              <h3>LEAF vs Logistics Allocation</h3>
+              <table border="1" cellpadding="5" cellspacing="0">
+                <thead>
+                  <tr>
+                    <th>Vendor Name</th>
+                    <th>LEAF Price</th>
+                    <th>LEAF Trucks</th>
+                    <th>LEAF Label</th>
+                    <th>Logistics Price</th>
+                    <th>Logistics Trucks</th>
+                    <th>Logistics Label</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows.join("")}
+                </tbody>
+              </table>
+            `;
       };
 
-      const leafAllocationTable = generateTableHTML(
+      const allocationComparisonTable = generateComparisonTableHTML(
         leafAllocation,
-        "LEAF Allocation"
-      );
-      const logisticsAllocationTable = generateTableHTML(
-        logisticsAllocation,
-        "Logistics Allocation"
+        logisticsAllocation
       );
 
-      // Define reasonContent
+      // Reason (if any)
       const reasonContent = finalizeReason
-        ? `<p><strong>Reason given for Difference:</strong> ${finalizeReason}</p>`
+        ? `<p><strong>Reason given for Difference:</strong> ${esc(
+            finalizeReason
+          )}</p>`
         : "";
+
+      // Customer & drop location
+      const dropLocationParts = [
+        rfq.address,
+        rfq.dropLocationDistrict,
+        rfq.dropLocationState,
+        rfq.pincode,
+      ]
+        .filter(Boolean)
+        .join(", ");
 
       const emailContent = {
         message: {
@@ -2163,13 +2405,20 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
           body: {
             contentType: "HTML",
             content: `
-              <p>This is a LEAF auto-alert to notify you of a mismatch between LEAF and Logistics Allocation for <strong>${rfq.RFQNumber}</strong>.</p>
-              ${leafAllocationTable}
-              ${logisticsAllocationTable}
-              <p><strong>Total LEAF Price:</strong> ${totalLeafPrice}</p>
-              <p><strong>Total Logistics Price:</strong> ${totalLogisticsPrice}</p>
-              ${reasonContent}
-            `,
+                  <p>This is a LEAF auto-alert to notify you of a mismatch between LEAF and Logistics Allocation for
+                    <strong>${esc(rfq.RFQNumber)}</strong>.
+                  </p>
+                  <p><strong>Customer Name:</strong> ${esc(
+                    rfq.customerName || ""
+                  )}</p>
+                  <p><strong>Drop Location:</strong> ${esc(
+                    dropLocationParts || ""
+                  )}</p>
+                  ${allocationComparisonTable}
+                  <p><strong>Total LEAF Price:</strong> ${totalLeafPrice}</p>
+                  <p><strong>Total Logistics Price:</strong> ${totalLogisticsPrice}</p>
+                  ${reasonContent}
+                `,
           },
           toRecipients: [
             {
@@ -2185,6 +2434,11 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
             {
               emailAddress: {
                 address: "vishnu.hazari@premierenergies.com",
+              },
+            },
+            {
+              emailAddress: {
+                address: "sivabala.sm@premierenergies.com",
               },
             },
           ],
@@ -2278,6 +2532,11 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
                 {
                   emailAddress: {
                     address: "kushagra.srivastava@premierenergies.com",
+                  },
+                },
+                {
+                  emailAddress: {
+                    address: "vishnu.hazari@premierenergies.com",
                   },
                 },
               ],
@@ -4011,160 +4270,175 @@ async function buildFreightWorkbook() {
   return { wb, pivot };
 }
 
-// =========== Helper to send workbook + inline pivot email ===========
-async function sendWeeklyFreight() {
-  const { wb, pivot } = await buildFreightWorkbook();
-  const buffer = await wb.xlsx.writeBuffer();
-  const base64 = buffer.toString("base64");
+// --- helper: minimal HTML escaper to avoid weird content breaking the email ---
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
-  // separate out overall average from pivot (last entry)
-  const overall = pivot.find((p) => p.state === "Overall Average");
+// =========== Robust weekly sender with attachment safeguards ===========
+async function sendWeeklyFreight() {
+  // Build the full workbook (detail + pivot + overall) using your existing logic
+  const { wb, pivot } = await buildFreightWorkbook();
+
+  // Ensure we always have an "Overall Average" row
+  let overall = pivot.find((p) => p.state === "Overall Average");
+  if (!overall) {
+    overall = { state: "Overall Average", avgINRperWp: 0 };
+    pivot.push(overall);
+  }
   const statesOnly = pivot.filter((p) => p.state !== "Overall Average");
 
-  // build HTML table, sorted descending
+  // Build the HTML table (descending state-wise)
   const htmlRows = statesOnly
     .map(
-      (p) => `<tr><td>${p.state}</td><td>${p.avgINRperWp.toFixed(4)}</td></tr>`
+      (p) =>
+        `<tr><td>${esc(p.state || "Unknown")}</td><td>${Number(
+          p.avgINRperWp || 0
+        ).toFixed(4)}</td></tr>`
     )
     .join("");
-  const table = `
-    <table border="1" cellpadding="5">
-      <thead><tr><th>State</th><th>Avg INR/Wp</th></tr></thead>
-      <tbody>
-        ${htmlRows}
-        <tr><th>Overall Average</th><th>${overall.avgINRperWp.toFixed(
-          4
-        )}</th></tr>
-      </tbody>
-    </table>`;
+
+  // Try to generate the full workbook buffer
+  let buffer;
+  let attachmentName = "freight-costs-weekly.xlsx";
+  try {
+    buffer = await wb.xlsx.writeBuffer(); // ExcelJS supports this in Node
+  } catch (e) {
+    // Fallback to a tiny pivot-only workbook if something goes wrong writing the full one
+    const small = new ExcelJS.Workbook();
+    const s = small.addWorksheet("Avg INR-per-Wp");
+    s.columns = [
+      { header: "State", key: "state", width: 24 },
+      { header: "Avg INR/Wp", key: "avg", width: 16 },
+    ];
+    statesOnly.forEach((p) => s.addRow({ state: p.state, avg: p.avgINRperWp }));
+    s.addRow({ state: "Overall Average", avg: overall.avgINRperWp });
+    buffer = await small.xlsx.writeBuffer();
+    attachmentName = "freight-costs-weekly-pivot-only.xlsx";
+  }
+
+  const bytes = buffer.byteLength || buffer.length || 0;
+  const MAX = 3 * 1024 * 1024; // ~3 MB limit for simple Graph attachments
+  const oversized = bytes > MAX;
+
+  const maybeAttachmentNote = oversized
+    ? `<p><em>Note:</em> Attachment omitted because it exceeds ${Math.round(
+        MAX / 1024 / 1024
+      )} MB.</p>`
+    : "";
 
   const message = {
-    subject: "Automated Weekly Freight-Cost Report",
+    subject: "Automated Weekly Freight-Cost Report By State",
     body: {
       contentType: "HTML",
       content: `
-        <p><strong>Overall Average INR/Wp across all states:</strong>
-           ${overall.avgINRperWp.toFixed(4)}</p>
-        <p>Below is the state-wise Avg INR/Wp (descending):</p>
-        ${table}`,
+        <p><strong>Overall Avg INR/Wp:</strong> ${Number(
+          overall.avgINRperWp || 0
+        ).toFixed(4)}</p>
+        <p>State-wise Avg INR/Wp (descending):</p>
+        <table border="1" cellpadding="5" cellspacing="0">
+          <thead><tr><th>State</th><th>Avg INR/Wp</th></tr></thead>
+          <tbody>
+            ${htmlRows || '<tr><td colspan="2">No data</td></tr>'}
+            <tr><th>Overall Average</th><th>${Number(
+              overall.avgINRperWp || 0
+            ).toFixed(4)}</th></tr>
+          </tbody>
+        </table>
+        <p>Generated on: ${new Date().toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
+        })}</p>
+        <br><br>
+        <p>Thanks & Regards,<br>
+        Team LEAF</p>
+        ${maybeAttachmentNote}
+      `,
     },
     toRecipients: [
       { emailAddress: { address: "aarnav.singh@premierenergies.com" } },
       { emailAddress: { address: "saumya.ranjan@premierenergies.com" } },
       { emailAddress: { address: "saisathvika.v@premierenergies.com" } },
       { emailAddress: { address: "sivabala.sm@premierenergies.com" } },
-    ],
-    attachments: [
-      {
-        "@odata.type": "#microsoft.graph.fileAttachment",
-        name: "freight-costs-weekly.xlsx",
-        contentBytes: base64,
-      },
+      { emailAddress: { address: "saluja@premierenergies.com" } },
+      { emailAddress: { address: "kushagra.srivastava@premierenergies.com" } },
     ],
   };
 
-  await client.api(`/users/${SENDER_EMAIL}/sendMail`).post({ message });
+  if (!oversized) {
+    message.attachments = [
+      {
+        "@odata.type": "#microsoft.graph.fileAttachment",
+        name: attachmentName,
+        contentBytes: Buffer.from(buffer).toString("base64"),
+      },
+    ];
+  }
+
+  // Use saveToSentItems to see it in Sent (optional but helpful)
+  await client.api(`/users/${SENDER_EMAIL}/sendMail`).post({
+    message,
+    saveToSentItems: true,
+  });
+
+  return {
+    attached: !oversized,
+    attachmentBytes: bytes,
+    pivotRows: statesOnly.length,
+    overallAvg: Number(overall.avgINRperWp || 0),
+  };
 }
 
-// ============ Schedule + fire off weekly sender ============
-app.get("/api/freight-costs/send-weekly", async (req, res) => {
+// --- One-time weekly schedule at startup (do NOT put this inside a route) ---
+cron.schedule(
+  "59 23 * * 0",
+  () => {
+    sendWeeklyFreight().catch((err) =>
+      console.error("Weekly freight email failed:", err?.response?.data || err)
+    );
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
+// --- TEST: simple no-attachment email to verify Graph works ---
+app.get("/api/freight-costs/test-email", async (req, res) => {
   try {
-    // send immediately
-    await sendWeeklyFreight();
-
-    // schedule for every Sunday at 23:59 IST
-    cron.schedule("59 23 * * 0", sendWeeklyFreight, {
-      timezone: "Asia/Kolkata",
+    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post({
+      message: {
+        subject: "LEAF test email (no attachment)",
+        body: {
+          contentType: "Text",
+          content: "This is a test mail from LEAF server.",
+        },
+        toRecipients: [
+          { emailAddress: { address: "aarnav.singh@premierenergies.com" } },
+        ],
+      },
+      saveToSentItems: true,
     });
-
-    return res.json({
-      message:
-        "Report sent immediately, and scheduled weekly on Sundays at 23:59 IST.",
-    });
+    res.json({ ok: true, sent: true });
   } catch (err) {
-    console.error("Error in /api/freight-costs/send-weekly:", err);
-    return res.status(500).json({
-      error: "Failed to send and schedule weekly freight-cost report.",
-    });
+    console.error("Graph test-email error:", err?.response?.data || err);
+    res
+      .status(500)
+      .json({ ok: false, error: err.message, details: err?.response?.data });
   }
 });
 
-/* ------------------------------------------------------------------ */
-/*  📧  URL-change e-mail helper + handler                            */
-/* ------------------------------------------------------------------ */
-
-/* 1️⃣  Beautifully-formatted HTML template                            */
-function buildUrlChangeEmailHTML(username) {
-  return `
-  <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, sans-serif; color:#333;">
-    <tr>
-      <td style="background:#006043;padding:24px 32px;">
-        <h1 style="margin:0;color:#fff;font-size:24px;">LEAF Portal – Important Update</h1>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:24px 32px;">
-        <p style="font-size:16px;margin:0 0 16px;">Hi ${username},</p>
-        <p style="font-size:16px;margin:0 0 16px;">
-          We’ve moved the LEAF portal to a new, more secure address&nbsp;👇
-        </p>
-        <p style="font-size:18px;margin:0 0 24px;">
-          <a href="https://leaf.premierenergies.com:10443/" style="color:#006043;text-decoration:none;font-weight:bold;">
-            https://leaf.premierenergies.com:10443/
-          </a>
-        </p>
-        <p style="font-size:16px;margin:0 0 8px;">
-          Please update your bookmarks and start using this URL immediately.
-        </p>
-        <p style="font-size:16px;margin:32px 0 0;">
-          Thanks &amp; Regards,<br/>
-          <strong>Team LEAF</strong>
-        </p>
-      </td>
-    </tr>
-  </table>`;
-}
-
-/* 2️⃣  The shared handler — fires on every GET *or* POST to /api/notify-url-change */
-async function notifyUrlChangeHandler(req, res) {
+// --- SEND NOW: returns JSON with attachment stats ---
+app.get("/api/freight-costs/send-weekly", async (req, res) => {
   try {
-    // Pull every user’s username + e-mail
-    const users = await User.find({}, "username email").lean();
-    if (!users.length) {
-      return res.status(200).json({ message: "No users found to notify." });
-    }
-
-    // Send the message to each user
-    for (const { username, email } of users) {
-      const emailContent = {
-        message: {
-          subject: "LEAF portal has a NEW home – please update your bookmark",
-          body: {
-            contentType: "HTML",
-            content: buildUrlChangeEmailHTML(username),
-          },
-          toRecipients: [{ emailAddress: { address: email } }],
-          from:       { emailAddress: { address: SENDER_EMAIL } },
-        },
-      };
-      await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(emailContent);
-    }
-
-    return res
-      .status(200)
-      .json({ message: `✅  ${users.length} user(s) notified successfully.` });
+    const result = await sendWeeklyFreight();
+    res.json({ ok: true, ...result });
   } catch (err) {
-    console.error("Error sending URL-change emails:", err);
-    return res
+    console.error("send-weekly error:", err?.response?.data || err);
+    res
       .status(500)
-      .json({ error: "Failed to dispatch URL-change emails" });
+      .json({ ok: false, error: err.message, details: err?.response?.data });
   }
-}
-
-// 3️⃣  Wire it up for both GET and POST
-app.get("/api/notify-url-change", notifyUrlChangeHandler);
-app.post("/api/notify-url-change", notifyUrlChangeHandler);
-
+});
 
 /* ------------------------------------------------------------------ */
 /* Static SPA – serve the built frontend on the *same* port           */

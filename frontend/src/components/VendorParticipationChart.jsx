@@ -3,7 +3,8 @@ import axios from 'axios';
 import * as am4core from '@amcharts/amcharts4/core';
 import * as am4charts from '@amcharts/amcharts4/charts';
 import am4themes_animated from '@amcharts/amcharts4/themes/animated';
-const API = "https://14.194.111.58:10443";
+const API = window.location.origin;
+
 am4core.useTheme(am4themes_animated);
 
 const VendorParticipationChart = () => {

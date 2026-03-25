@@ -4,7 +4,8 @@ import React, { useLayoutEffect, useRef } from 'react';
 import axios from 'axios';
 import * as am4core from '@amcharts/amcharts4/core';
 import * as am4charts from '@amcharts/amcharts4/charts';
-const API = "https://14.194.111.58:10443";
+const API = window.location.origin;
+
 const TopVendorsChart = () => {
   const chartRef = useRef(null);
 

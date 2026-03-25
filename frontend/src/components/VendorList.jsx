@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-const API = "https://14.194.111.58:10443";
+const API = window.location.origin;
+
 const VendorList = () => {
   const [vendors, setVendors] = useState([]);
   const [factoryUsers, setFactoryUsers] = useState([]);
