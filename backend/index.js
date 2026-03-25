@@ -382,6 +382,45 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
+const allocationSnapshotSchema = new mongoose.Schema(
+  {
+    vendorName: String,
+    companyName: String,
+    price: Number,
+    trucksAllotted: Number,
+    trucksOffered: Number,
+    label: String,
+    numberOfVehiclesPerDay: Number,
+  },
+  { _id: false }
+);
+
+const finalizationAuditSchema = new mongoose.Schema(
+  {
+    finalizedAt: Date,
+    leafAllocationSnapshot: [allocationSnapshotSchema],
+    logisticsAllocationSnapshot: [allocationSnapshotSchema],
+    allocationMismatchAlert: {
+      triggered: { type: Boolean, default: false },
+      totalLeafPrice: Number,
+      totalLogisticsPrice: Number,
+      reason: String,
+    },
+    budgetExceededAlert: {
+      triggered: { type: Boolean, default: false },
+      totalLogisticsPrice: Number,
+      mwValue: Number,
+      budgetedPrice: Number,
+      finalPriceInrPerWp: Number,
+      varianceInrPerWp: Number,
+      salesOrderCustomerName: String,
+      salesOrderSiteLocation: String,
+      projectCapacity: Number,
+    },
+  },
+  { _id: false }
+);
+
 // rfq schema and model
 const rfqSchema = new mongoose.Schema(
   {
@@ -432,6 +471,7 @@ const rfqSchema = new mongoose.Schema(
     selectedVendors: [{ type: mongoose.Schema.Types.ObjectId, ref: "Vendor" }],
     projectCode: { type: String },
     mw: { type: Number },
+    finalizationAudit: finalizationAuditSchema,
     vendorActions: [
       {
         action: String, // "addedAtCreation", "added", "reminderSent"
@@ -470,6 +510,394 @@ const lrNumberSchema = new mongoose.Schema({
 });
 
 const LRNumber = mongoose.model("LRNumber", lrNumberSchema);
+
+function toPlainObject(doc) {
+  if (!doc) return {};
+  return typeof doc.toObject === "function" ? doc.toObject() : { ...doc };
+}
+
+function toSafeNumber(value, fallback = 0) {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function assignLeafAllocationByPrice(quotes, requiredTrucks) {
+  if (!requiredTrucks || requiredTrucks <= 0) return [];
+
+  const sortedQuotes = [...quotes].sort(
+    (a, b) => toSafeNumber(a.price) - toSafeNumber(b.price)
+  );
+  let totalTrucks = 0;
+
+  return sortedQuotes.map((quote, index) => {
+    const plainQuote = toPlainObject(quote);
+
+    if (totalTrucks < requiredTrucks) {
+      const trucksToAllot = Math.min(
+        toSafeNumber(plainQuote.numberOfTrucks),
+        requiredTrucks - totalTrucks
+      );
+      totalTrucks += trucksToAllot;
+      return {
+        ...plainQuote,
+        label: `L${index + 1}`,
+        trucksAllotted: trucksToAllot,
+      };
+    }
+
+    return { ...plainQuote, label: "-", trucksAllotted: 0 };
+  });
+}
+
+function extractLabelRank(label) {
+  const match = String(label || "").match(/^L(\d+)$/i);
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function sortQuotesByOriginalRank(quotes) {
+  return [...quotes].sort((a, b) => {
+    const rankDifference =
+      extractLabelRank(a.label) - extractLabelRank(b.label);
+    if (rankDifference !== 0) {
+      return rankDifference;
+    }
+    return toSafeNumber(a.price) - toSafeNumber(b.price);
+  });
+}
+
+function buildLeafAllocationFromRankedQuotes(quotes, requiredTrucks) {
+  if (!requiredTrucks || requiredTrucks <= 0) return [];
+
+  let totalTrucks = 0;
+
+  return quotes.map((quote, index) => {
+    const plainQuote = toPlainObject(quote);
+
+    if (totalTrucks < requiredTrucks) {
+      const trucksToAllot = Math.min(
+        toSafeNumber(plainQuote.numberOfTrucks),
+        requiredTrucks - totalTrucks
+      );
+      totalTrucks += trucksToAllot;
+      return {
+        ...plainQuote,
+        label: `L${index + 1}`,
+        trucksAllotted: trucksToAllot,
+      };
+    }
+
+    return { ...plainQuote, label: "-", trucksAllotted: 0 };
+  });
+}
+
+function buildAllocationSnapshot(entries) {
+  return (entries || []).map((entry, index) => {
+    const plainEntry = toPlainObject(entry);
+
+    return {
+      vendorName: plainEntry.vendorName || "",
+      companyName: plainEntry.companyName || "",
+      price: toSafeNumber(plainEntry.price),
+      trucksAllotted: toSafeNumber(plainEntry.trucksAllotted),
+      trucksOffered: toSafeNumber(
+        plainEntry.trucksOffered ?? plainEntry.numberOfTrucks
+      ),
+      label: plainEntry.label || `L${index + 1}`,
+      numberOfVehiclesPerDay: toSafeNumber(plainEntry.numberOfVehiclesPerDay),
+    };
+  });
+}
+
+function calculateTotalAllocationPrice(allocation) {
+  return (allocation || []).reduce(
+    (sum, alloc) =>
+      sum +
+      toSafeNumber(alloc.price) * toSafeNumber(alloc.trucksAllotted),
+    0
+  );
+}
+
+function buildAllocationComparison(leafAllocation, logisticsAllocation) {
+  const leafAllocData = (leafAllocation || []).map((alloc) => ({
+    vendorName: alloc.vendorName,
+    trucksAllotted: toSafeNumber(alloc.trucksAllotted),
+  }));
+  const logisticsAllocData = (logisticsAllocation || []).map((alloc) => ({
+    vendorName: alloc.vendorName,
+    trucksAllotted: toSafeNumber(alloc.trucksAllotted),
+  }));
+
+  return {
+    leafAllocData,
+    logisticsAllocData,
+    isIdentical:
+      JSON.stringify(leafAllocData) === JSON.stringify(logisticsAllocData),
+    totalLeafPrice: calculateTotalAllocationPrice(leafAllocation),
+    totalLogisticsPrice: calculateTotalAllocationPrice(logisticsAllocation),
+  };
+}
+
+function buildBudgetExceededAlertSnapshot(rfq, logisticsAllocation, salesOrder) {
+  const totalLogisticsPrice = calculateTotalAllocationPrice(logisticsAllocation);
+  const mwValue = toSafeNumber(rfq?.mw, null);
+  const budgetedPrice = salesOrder
+    ? toSafeNumber(salesOrder.budgetedPrice, null)
+    : null;
+  const finalPriceInrPerWp =
+    mwValue && mwValue > 0 ? totalLogisticsPrice / mwValue / 1000000 : null;
+  const triggered = Boolean(
+    salesOrder &&
+      mwValue &&
+      mwValue > 0 &&
+      finalPriceInrPerWp !== null &&
+      budgetedPrice !== null &&
+      finalPriceInrPerWp > budgetedPrice
+  );
+
+  return {
+    triggered,
+    totalLogisticsPrice,
+    mwValue,
+    budgetedPrice,
+    finalPriceInrPerWp,
+    varianceInrPerWp:
+      finalPriceInrPerWp !== null && budgetedPrice !== null
+        ? finalPriceInrPerWp - budgetedPrice
+        : null,
+    salesOrderCustomerName: salesOrder?.customerName || "",
+    salesOrderSiteLocation: salesOrder?.siteLocation || "",
+    projectCapacity: salesOrder
+      ? toSafeNumber(salesOrder.projectCapacity, null)
+      : null,
+  };
+}
+
+function formatDropLocation(rfq) {
+  return [
+    rfq?.address,
+    rfq?.dropLocationDistrict,
+    rfq?.dropLocationState,
+    rfq?.pincode,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function formatAllocationSummary(allocations) {
+  return (allocations || [])
+    .map((alloc) => {
+      const vendorLabel =
+        alloc.companyName && alloc.companyName !== alloc.vendorName
+          ? `${alloc.companyName} (${alloc.vendorName})`
+          : alloc.vendorName || alloc.companyName || "-";
+
+      return `${alloc.label || "-"} | ${vendorLabel} | Quote ${toSafeNumber(
+        alloc.price
+      )} | Allotted ${toSafeNumber(alloc.trucksAllotted)} | Offered ${toSafeNumber(
+        alloc.trucksOffered
+      )}`;
+    })
+    .join("\n");
+}
+
+function buildRfqAlertReportContext(rfq, quotes, salesOrder) {
+  const capturedAudit = rfq.finalizationAudit || {};
+  const hasCapturedAudit = Boolean(
+    capturedAudit.finalizedAt ||
+      capturedAudit.leafAllocationSnapshot?.length ||
+      capturedAudit.logisticsAllocationSnapshot?.length ||
+      capturedAudit.allocationMismatchAlert ||
+      capturedAudit.budgetExceededAlert
+  );
+  const rankedQuotes = sortQuotesByOriginalRank(quotes || []);
+  const reconstructedLeafAllocation = buildAllocationSnapshot(
+    buildLeafAllocationFromRankedQuotes(
+      rankedQuotes,
+      toSafeNumber(rfq.numberOfVehicles)
+    )
+  );
+  const reconstructedLogisticsAllocation = buildAllocationSnapshot(rankedQuotes);
+
+  const leafAllocation =
+    capturedAudit.leafAllocationSnapshot?.length > 0
+      ? buildAllocationSnapshot(capturedAudit.leafAllocationSnapshot)
+      : reconstructedLeafAllocation;
+  const logisticsAllocation =
+    capturedAudit.logisticsAllocationSnapshot?.length > 0
+      ? buildAllocationSnapshot(capturedAudit.logisticsAllocationSnapshot)
+      : reconstructedLogisticsAllocation;
+
+  const allocationComparison = buildAllocationComparison(
+    leafAllocation,
+    logisticsAllocation
+  );
+  const budgetExceeded = hasCapturedAudit
+    ? {
+        ...buildBudgetExceededAlertSnapshot(rfq, logisticsAllocation, salesOrder),
+        ...capturedAudit.budgetExceededAlert,
+      }
+    : buildBudgetExceededAlertSnapshot(rfq, logisticsAllocation, salesOrder);
+
+  const finalizedAt =
+    capturedAudit.finalizedAt || rfq.updatedAt || rfq.createdAt || null;
+  const dataSource = hasCapturedAudit ? "captured" : "reconstructed";
+  const baseRow = {
+    rfqId: String(rfq._id),
+    finalizedAt,
+    rfqNumber: rfq.RFQNumber || "",
+    shortName: rfq.shortName || "",
+    customerName:
+      rfq.customerName || budgetExceeded.salesOrderCustomerName || "",
+    projectCode: rfq.projectCode || "",
+    sapOrder: rfq.sapOrder || "",
+    originLocation: rfq.originLocation || "",
+    dropLocation: formatDropLocation(rfq),
+    numberOfVehicles: toSafeNumber(rfq.numberOfVehicles),
+    mw: toSafeNumber(rfq.mw, null),
+    finalizeReason:
+      capturedAudit.allocationMismatchAlert?.reason || rfq.finalizeReason || "",
+    dataSource,
+  };
+
+  return {
+    allocationMismatchRow: (
+      capturedAudit.allocationMismatchAlert?.triggered ??
+      !allocationComparison.isIdentical
+    )
+      ? {
+          ...baseRow,
+          totalLeafPrice:
+            capturedAudit.allocationMismatchAlert?.totalLeafPrice ??
+            allocationComparison.totalLeafPrice,
+          totalLogisticsPrice:
+            capturedAudit.allocationMismatchAlert?.totalLogisticsPrice ??
+            allocationComparison.totalLogisticsPrice,
+          priceDelta:
+            (capturedAudit.allocationMismatchAlert?.totalLogisticsPrice ??
+              allocationComparison.totalLogisticsPrice) -
+            (capturedAudit.allocationMismatchAlert?.totalLeafPrice ??
+              allocationComparison.totalLeafPrice),
+          leafAllocationDetails: leafAllocation,
+          logisticsAllocationDetails: logisticsAllocation,
+          leafAllocationSummary: formatAllocationSummary(leafAllocation),
+          logisticsAllocationSummary: formatAllocationSummary(
+            logisticsAllocation
+          ),
+        }
+      : null,
+    budgetExceededRow: budgetExceeded.triggered
+      ? {
+          ...baseRow,
+          salesOrderCustomerName: budgetExceeded.salesOrderCustomerName,
+          salesOrderSiteLocation: budgetExceeded.salesOrderSiteLocation,
+          projectCapacity: budgetExceeded.projectCapacity,
+          budgetedPriceInrPerWp: budgetExceeded.budgetedPrice,
+          finalPriceInrPerWp: budgetExceeded.finalPriceInrPerWp,
+          varianceInrPerWp: budgetExceeded.varianceInrPerWp,
+          totalLogisticsPrice: budgetExceeded.totalLogisticsPrice,
+          logisticsAllocationDetails: logisticsAllocation,
+          logisticsAllocationSummary: formatAllocationSummary(
+            logisticsAllocation
+          ),
+        }
+      : null,
+  };
+}
+
+async function buildAdminAlertReports() {
+  const rfqs = await RFQ.find({ status: "closed" })
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  if (!rfqs.length) {
+    return {
+      generatedAt: new Date(),
+      allocationMismatchRows: [],
+      budgetExceededRows: [],
+    };
+  }
+
+  const rfqIds = rfqs.map((rfq) => rfq._id);
+  const quotes = await Quote.find({ rfqId: { $in: rfqIds } }).lean();
+  const quotesByRfqId = new Map();
+
+  for (const quote of quotes) {
+    const key = String(quote.rfqId);
+    if (!quotesByRfqId.has(key)) {
+      quotesByRfqId.set(key, []);
+    }
+    quotesByRfqId.get(key).push(quote);
+  }
+
+  const projectCodes = [
+    ...new Set(rfqs.map((rfq) => rfq.projectCode).filter(Boolean)),
+  ];
+  const salesOrders = projectCodes.length
+    ? await SalesOrder.find({ projectCode: { $in: projectCodes } }).lean()
+    : [];
+  const salesOrderByProjectCode = new Map(
+    salesOrders.map((salesOrder) => [salesOrder.projectCode, salesOrder])
+  );
+
+  const allocationMismatchRows = [];
+  const budgetExceededRows = [];
+
+  for (const rfq of rfqs) {
+    const reportContext = buildRfqAlertReportContext(
+      rfq,
+      quotesByRfqId.get(String(rfq._id)) || [],
+      salesOrderByProjectCode.get(rfq.projectCode)
+    );
+
+    if (reportContext.allocationMismatchRow) {
+      allocationMismatchRows.push(reportContext.allocationMismatchRow);
+    }
+    if (reportContext.budgetExceededRow) {
+      budgetExceededRows.push(reportContext.budgetExceededRow);
+    }
+  }
+
+  const sortByLatest = (left, right) => {
+    const leftTime = left.finalizedAt ? new Date(left.finalizedAt).getTime() : 0;
+    const rightTime = right.finalizedAt
+      ? new Date(right.finalizedAt).getTime()
+      : 0;
+    return rightTime - leftTime;
+  };
+
+  allocationMismatchRows.sort(sortByLatest);
+  budgetExceededRows.sort(sortByLatest);
+
+  return {
+    generatedAt: new Date(),
+    allocationMismatchRows,
+    budgetExceededRows,
+  };
+}
+
+function styleReportWorksheet(sheet) {
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
+  sheet.getRow(1).font = { bold: true };
+  sheet.getRow(1).alignment = { vertical: "middle", wrapText: true };
+
+  const wrapKeys = new Set([
+    "dropLocation",
+    "finalizeReason",
+    "leafAllocationSummary",
+    "logisticsAllocationSummary",
+  ]);
+
+  for (const column of sheet.columns) {
+    if (wrapKeys.has(column.key)) {
+      column.alignment = { vertical: "top", wrapText: true };
+    } else {
+      column.alignment = { vertical: "top" };
+    }
+  }
+}
 
 // RFQs
 rfqSchema.index({ createdAt: -1 }); // list newest
@@ -2264,60 +2692,23 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
     // Fetch all quotes for this RFQ
     const quotes = await Quote.find({ rfqId: id });
 
-    // Compute LEAF Allocation based on quotes
-    const assignLeafAllocation = (quotes, requiredTrucks) => {
-      if (!requiredTrucks || requiredTrucks <= 0) return [];
-
-      // Sort quotes by price (ascending)
-      const sortedQuotes = [...quotes].sort((a, b) => a.price - b.price);
-      let totalTrucks = 0;
-
-      return sortedQuotes.map((quote, index) => {
-        if (totalTrucks < requiredTrucks) {
-          const trucksToAllot = Math.min(
-            quote.numberOfTrucks,
-            requiredTrucks - totalTrucks
-          );
-          totalTrucks += trucksToAllot;
-          return {
-            ...quote.toObject(),
-            label: `L${index + 1}`,
-            trucksAllotted: trucksToAllot,
-          };
-        }
-        return { ...quote.toObject(), label: "-", trucksAllotted: 0 };
-      });
-    };
-
-    const leafAllocation = assignLeafAllocation(quotes, rfq.numberOfVehicles);
-
-    // Prepare data for comparison
-    const leafAllocData = leafAllocation.map((alloc) => ({
-      vendorName: alloc.vendorName,
-      trucksAllotted: alloc.trucksAllotted,
-    }));
-    const logisticsAllocData = logisticsAllocation.map((alloc) => ({
-      vendorName: alloc.vendorName,
-      trucksAllotted: alloc.trucksAllotted,
-    }));
-
-    // Check if Logistics Allocation matches LEAF Allocation
-    const isIdentical =
-      JSON.stringify(leafAllocData) === JSON.stringify(logisticsAllocData);
+    const leafAllocation = assignLeafAllocationByPrice(
+      quotes,
+      rfq.numberOfVehicles
+    );
+    const leafAllocationSnapshot = buildAllocationSnapshot(leafAllocation);
+    const logisticsAllocationSnapshot =
+      buildAllocationSnapshot(logisticsAllocation);
+    const allocationComparison = buildAllocationComparison(
+      leafAllocationSnapshot,
+      logisticsAllocationSnapshot
+    );
+    const { isIdentical, totalLeafPrice, totalLogisticsPrice } =
+      allocationComparison;
 
     // If there is a mismatch, send email to specified addresses
     // If there is a mismatch, send email to specified addresses
     if (!isIdentical) {
-      // Compute Total LEAF Price and Total Logistics Price
-      const totalLeafPrice = leafAllocation.reduce(
-        (sum, alloc) => sum + alloc.price * alloc.trucksAllotted,
-        0
-      );
-      const totalLogisticsPrice = logisticsAllocation.reduce(
-        (sum, alloc) => sum + alloc.price * alloc.trucksAllotted,
-        0
-      );
-
       // Single comparison table: LEAF vs Logistics per vendor
       const generateComparisonTableHTML = (
         leafAllocation,
@@ -2378,8 +2769,8 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
       };
 
       const allocationComparisonTable = generateComparisonTableHTML(
-        leafAllocation,
-        logisticsAllocation
+        leafAllocationSnapshot,
+        logisticsAllocationSnapshot
       );
 
       // Reason (if any)
@@ -2390,14 +2781,7 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
         : "";
 
       // Customer & drop location
-      const dropLocationParts = [
-        rfq.address,
-        rfq.dropLocationDistrict,
-        rfq.dropLocationState,
-        rfq.pincode,
-      ]
-        .filter(Boolean)
-        .join(", ");
+      const dropLocationParts = formatDropLocation(rfq);
 
       const emailContent = {
         message: {
@@ -2458,11 +2842,18 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
     }
 
     // ***** New code: Send additional sales alert email if price per MW exceeds Budgeted Cost *****
-    const totalLogisticsPriceCalculated = logisticsAllocation.reduce(
-      (sum, alloc) => sum + alloc.price * alloc.trucksAllotted,
-      0
+    const salesOrder = rfq.projectCode
+      ? await SalesOrder.findOne({
+          projectCode: rfq.projectCode,
+        })
+      : null;
+    const budgetExceededAlert = buildBudgetExceededAlertSnapshot(
+      rfq,
+      logisticsAllocationSnapshot,
+      salesOrder
     );
-    const mwValue = Number(rfq.mw);
+    const totalLogisticsPriceCalculated = budgetExceededAlert.totalLogisticsPrice;
+    const mwValue = budgetExceededAlert.mwValue;
     console.log(
       "Sales Alert Calculation: totalLogisticsPriceCalculated =",
       totalLogisticsPriceCalculated,
@@ -2472,21 +2863,16 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
       mwValue
     );
     if (mwValue > 0 && rfq.projectCode) {
-      // Look up the SalesOrder using the projectCode field
-      const salesOrder = await SalesOrder.findOne({
-        projectCode: rfq.projectCode,
-      });
       if (salesOrder) {
-        // Use the new budgetedPrice field from SalesOrder
-        const budgetedCost = Number(salesOrder.budgetedPrice);
-        const pricePerMW = totalLogisticsPriceCalculated / mwValue / 1000000;
+        const budgetedCost = budgetExceededAlert.budgetedPrice;
+        const pricePerMW = budgetExceededAlert.finalPriceInrPerWp;
         console.log(
           "Sales Alert Calculation: pricePerMW =",
           pricePerMW,
           "; budgetedCost =",
           budgetedCost
         );
-        if (pricePerMW > budgetedCost) {
+        if (budgetExceededAlert.triggered) {
           console.log(
             "Condition met: pricePerMW (" +
               pricePerMW.toFixed(2) +
@@ -2578,11 +2964,23 @@ app.post("/api/rfq/:id/finalize-allocation", async (req, res) => {
       }
     }
 
-    // Update the RFQ status to 'closed' and save the finalizeReason
+    // Update the RFQ status to 'closed', capture the alert snapshot, and save the finalizeReason
     rfq.status = "closed";
     if (finalizeReason) {
       rfq.finalizeReason = finalizeReason;
     }
+    rfq.finalizationAudit = {
+      finalizedAt: new Date(),
+      leafAllocationSnapshot,
+      logisticsAllocationSnapshot,
+      allocationMismatchAlert: {
+        triggered: !isIdentical,
+        totalLeafPrice,
+        totalLogisticsPrice,
+        reason: finalizeReason || "",
+      },
+      budgetExceededAlert,
+    };
     await rfq.save();
 
     for (const alloc of logisticsAllocation) {
@@ -3918,6 +4316,146 @@ app.post("/api/fastag-tracking", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+
+app.get("/api/admin/reports/finalization-alerts", async (req, res) => {
+  try {
+    const reports = await buildAdminAlertReports();
+    res.status(200).json(reports);
+  } catch (error) {
+    console.error("Error generating finalization alert reports:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to generate finalization alert reports" });
+  }
+});
+
+app.get(
+  "/api/admin/reports/finalization-alerts/:reportKey.:format",
+  async (req, res) => {
+    try {
+      const { reportKey, format } = req.params;
+      const reports = await buildAdminAlertReports();
+      const reportConfigs = {
+        "allocation-mismatch": {
+          rows: reports.allocationMismatchRows,
+          filename: "allocation-mismatch-alerts.xlsx",
+          sheetName: "Allocation Mismatch",
+          columns: [
+            { header: "Finalized At", key: "finalizedAt", width: 22 },
+            { header: "RFQ Number", key: "rfqNumber", width: 18 },
+            { header: "Customer Name", key: "customerName", width: 24 },
+            { header: "Project Code", key: "projectCode", width: 20 },
+            { header: "Origin", key: "originLocation", width: 18 },
+            { header: "Drop Location", key: "dropLocation", width: 34 },
+            { header: "Vehicles", key: "numberOfVehicles", width: 12 },
+            { header: "Total LEAF Price", key: "totalLeafPrice", width: 18 },
+            {
+              header: "Total Logistics Price",
+              key: "totalLogisticsPrice",
+              width: 18,
+            },
+            { header: "Price Delta", key: "priceDelta", width: 14 },
+            { header: "Reason", key: "finalizeReason", width: 34 },
+            {
+              header: "LEAF Allocation",
+              key: "leafAllocationSummary",
+              width: 48,
+            },
+            {
+              header: "Logistics Allocation",
+              key: "logisticsAllocationSummary",
+              width: 48,
+            },
+            { header: "Data Source", key: "dataSource", width: 14 },
+          ],
+        },
+        "budget-exceeded": {
+          rows: reports.budgetExceededRows,
+          filename: "budget-exceeded-alerts.xlsx",
+          sheetName: "Budget Exceeded",
+          columns: [
+            { header: "Finalized At", key: "finalizedAt", width: 22 },
+            { header: "RFQ Number", key: "rfqNumber", width: 18 },
+            { header: "Customer Name", key: "customerName", width: 24 },
+            { header: "Project Code", key: "projectCode", width: 20 },
+            {
+              header: "Sales Site Location",
+              key: "salesOrderSiteLocation",
+              width: 24,
+            },
+            { header: "Drop Location", key: "dropLocation", width: 34 },
+            { header: "MW", key: "mw", width: 12 },
+            { header: "Vehicles", key: "numberOfVehicles", width: 12 },
+            {
+              header: "Budgeted Price (INR/Wp)",
+              key: "budgetedPriceInrPerWp",
+              width: 20,
+            },
+            {
+              header: "Final Price (INR/Wp)",
+              key: "finalPriceInrPerWp",
+              width: 18,
+            },
+            {
+              header: "Variance (INR/Wp)",
+              key: "varianceInrPerWp",
+              width: 18,
+            },
+            {
+              header: "Total Logistics Price",
+              key: "totalLogisticsPrice",
+              width: 18,
+            },
+            {
+              header: "Logistics Allocation",
+              key: "logisticsAllocationSummary",
+              width: 48,
+            },
+            { header: "Data Source", key: "dataSource", width: 14 },
+          ],
+        },
+      };
+
+      const reportConfig = reportConfigs[reportKey];
+      if (!reportConfig) {
+        return res.status(404).json({ error: "Unknown report key" });
+      }
+
+      if (format === "json") {
+        return res.status(200).json(reportConfig.rows);
+      }
+
+      if (format !== "xlsx") {
+        return res
+          .status(400)
+          .send("Invalid format. Use .json or .xlsx");
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet(reportConfig.sheetName);
+      sheet.columns = reportConfig.columns;
+      reportConfig.rows.forEach((row) => sheet.addRow(row));
+      styleReportWorksheet(sheet);
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${reportConfig.filename}"`
+      );
+
+      await workbook.xlsx.write(res);
+      return res.end();
+    } catch (error) {
+      console.error("Error exporting finalization alert report:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to export finalization alert report" });
+    }
+  }
+);
 
 // GET /api/export.json  → returns JSON
 // GET /api/export.xlsx → prompts download of an Excel file

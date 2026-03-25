@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -28,7 +28,7 @@ import MDView from "./components/MDView";
 import TFR from "./components/TFR";
 import SalesRFQList from "./components/SalesRFQList";
 import FastagTracking from "./components/FastagTracking";
-const API = window.location.origin;
+import AdminAlertReports from "./components/AdminAlertReports";
 
 const App = () => {
   const [role, setRole] = useState(null);
@@ -99,6 +99,10 @@ const App = () => {
                     />
                     <Route path="/mdview" element={<MDView />} />
                     <Route path="/accounts" element={<Accounts />} />
+                    <Route
+                      path="/admin-alert-reports"
+                      element={<AdminAlertReports />}
+                    />
                   </>
                 )}
 

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Logo from "../assets/it.png";
-const API = window.location.origin;
+
 const Header = ({ role, onLogout }) => {
   const [openNav, setOpenNav] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -14,8 +15,9 @@ const Header = ({ role, onLogout }) => {
           { to: "/rfq-list", label: "RFQ List" },
           { to: "/vendor-list", label: "Users" },
           { to: "/accounts", label: "Accounts" },
+          { to: "/admin-alert-reports", label: "Reports" },
           { to: "/mdview", label: "CXO" },
-          { to: "/fastag-tracking", label: "FT"},
+          { to: "/fastag-tracking", label: "FT" },
         ]
       : role === "vendor"
       ? [
@@ -158,6 +160,11 @@ const Header = ({ role, onLogout }) => {
       </nav>
     </header>
   );
+};
+
+Header.propTypes = {
+  role: PropTypes.string,
+  onLogout: PropTypes.func.isRequired,
 };
 
 export default Header;
